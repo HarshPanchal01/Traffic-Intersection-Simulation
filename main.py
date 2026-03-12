@@ -1,7 +1,7 @@
 import pygame
 import sys
 from simulation.car import Car
-from simulation.traffic_light import TrafficLight
+from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
 
 # Set up the colors
@@ -10,6 +10,7 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
 GRASS_COLOR = (34, 139, 34)
 ROAD_COLOR = (50, 50, 50)
 YELLOW_LINE = (255, 204, 0)
@@ -52,6 +53,37 @@ def draw_intersection(screen):
     # East (cars coming from east)
     pygame.draw.line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y), 4)
 
+def draw_traffic_lights(screen, traffic_lights):
+    center_x, center_y = WIDTH // 2, HEIGHT // 2
+    
+    def get_color(state):
+        if state == "GREEN": return GREEN
+        if state == "YELLOW": return YELLOW
+        return RED
+
+    ns_color = get_color(traffic_lights.ns_state)
+    ew_color = get_color(traffic_lights.ew_state)
+    
+    radius = 12
+    offset_x = ROAD_WIDTH // 2 + 20
+    offset_y = ROAD_WIDTH // 2 + 20
+    
+    # Draw light housing (black rectangles)
+    pygame.draw.rect(screen, BLACK, (center_x - offset_x - radius - 2, center_y + offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # South approaching
+    pygame.draw.rect(screen, BLACK, (center_x + offset_x - radius - 2, center_y - offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # North approaching
+    pygame.draw.rect(screen, BLACK, (center_x - offset_x - radius - 2, center_y - offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # West approaching
+    pygame.draw.rect(screen, BLACK, (center_x + offset_x - radius - 2, center_y + offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # East approaching
+    
+    # North approaching (NS light) - top-right
+    pygame.draw.circle(screen, ns_color, (center_x + offset_x, center_y - offset_y), radius)
+    # South approaching (NS light) - bottom-left
+    pygame.draw.circle(screen, ns_color, (center_x - offset_x, center_y + offset_y), radius)
+    
+    # West approaching (EW light) - top-left
+    pygame.draw.circle(screen, ew_color, (center_x - offset_x, center_y - offset_y), radius)
+    # East approaching (EW light) - bottom-right
+    pygame.draw.circle(screen, ew_color, (center_x + offset_x, center_y + offset_y), radius)
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -60,6 +92,8 @@ def main():
     # clock object that ensures animation has the same speed on all machines
     clock = pygame.time.Clock()
 
+    traffic_lights = TrafficLightSystem()
+
     print('--------------------------------')
     print('Usage:')
     print('Press (q) to stop the simulation')
@@ -67,21 +101,25 @@ def main():
 
     running = True
     while running:
+        # Calculate delta time in seconds
+        dt = clock.tick(60) / 1000.0
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 running = False
 
+        # Update logic
+        traffic_lights.update(dt)
+
         # Draw environment
         draw_intersection(screen)
+        draw_traffic_lights(screen, traffic_lights)
         
-        # TODO: Update and draw simulation components
+        # TODO: Update and draw cars
         
         pygame.display.flip()
-        
-        # 60 fps
-        clock.tick(60)
 
     pygame.quit()
     sys.exit(0)
