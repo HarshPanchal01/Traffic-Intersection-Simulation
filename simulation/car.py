@@ -3,7 +3,17 @@ from scipy.integrate import ode
 import pygame
 
 class Car:
+    _BASE_IMAGE = None
+    _DETAILS_IMAGE = None
+
+    @classmethod
+    def load_sprites(cls):
+        if cls._BASE_IMAGE is None:
+            cls._BASE_IMAGE = pygame.image.load('assets/car_base.png').convert_alpha()
+            cls._DETAILS_IMAGE = pygame.image.load('assets/car_details.png').convert_alpha()
+
     def __init__(self, direction, start_pos):
+        Car.load_sprites()
         self.direction = direction # 'N', 'S', 'E', 'W'
         
         # State: [position_1d, velocity_1d]
@@ -27,6 +37,21 @@ class Car:
         self.width = 20
         # Random car color
         self.color = (np.random.randint(50, 255), np.random.randint(50, 255), np.random.randint(50, 255))
+        
+        # Setup the sprite
+        base_copy = self._BASE_IMAGE.copy()
+        base_copy.fill(self.color, special_flags=pygame.BLEND_MULT)
+        base_copy.blit(self._DETAILS_IMAGE, (0, 0))
+        
+        # Default sprite faces North (up). Rotate based on direction of travel
+        if self.direction == 'S': # Coming from South, moving North
+            self.image = base_copy # already facing north
+        elif self.direction == 'N': # Coming from North, moving South
+            self.image = pygame.transform.rotate(base_copy, 180)
+        elif self.direction == 'E': # Coming from East, moving West
+            self.image = pygame.transform.rotate(base_copy, 90)
+        elif self.direction == 'W': # Coming from West, moving East
+            self.image = pygame.transform.rotate(base_copy, -90)
         
     def f(self, t, state, a):
         x, v = state
@@ -94,11 +119,5 @@ class Car:
 
     def draw(self, screen):
         cx, cy = self.get_2d_position()
-        # Create a surface for the car
-        if self.direction in ['N', 'S']:
-            rect = pygame.Rect(0, 0, self.width, self.length)
-        else:
-            rect = pygame.Rect(0, 0, self.length, self.width)
-            
-        rect.center = (cx, cy)
-        pygame.draw.rect(screen, self.color, rect)
+        rect = self.image.get_rect(center=(cx, cy))
+        screen.blit(self.image, rect)

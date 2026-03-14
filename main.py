@@ -53,7 +53,7 @@ def draw_intersection(screen):
     # East (cars coming from east)
     pygame.draw.line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y), 4)
 
-def draw_traffic_lights(screen, traffic_lights):
+def draw_traffic_lights(screen, traffic_lights, tl_box_img):
     center_x, center_y = WIDTH // 2, HEIGHT // 2
     
     def get_color(state):
@@ -64,25 +64,48 @@ def draw_traffic_lights(screen, traffic_lights):
     ns_color = get_color(traffic_lights.ns_state)
     ew_color = get_color(traffic_lights.ew_state)
     
-    radius = 12
-    offset_x = ROAD_WIDTH // 2 + 20
-    offset_y = ROAD_WIDTH // 2 + 20
+    radius = 8
     
-    # Draw light housing (black rectangles)
-    pygame.draw.rect(screen, BLACK, (center_x - offset_x - radius - 2, center_y + offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # South approaching
-    pygame.draw.rect(screen, BLACK, (center_x + offset_x - radius - 2, center_y - offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # North approaching
-    pygame.draw.rect(screen, BLACK, (center_x - offset_x - radius - 2, center_y - offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # West approaching
-    pygame.draw.rect(screen, BLACK, (center_x + offset_x - radius - 2, center_y + offset_y - radius - 2, radius*2 + 4, radius*2 + 4)) # East approaching
+    # Optional glow effect for lights
+    def draw_light(surface, img, color, pos, angle):
+        # Rotate the box image
+        rotated_img = pygame.transform.rotate(img, angle)
+        rect = rotated_img.get_rect(center=pos)
+        surface.blit(rotated_img, rect.topleft)
+        
+        # Calculate light position based on angle
+        if angle == 0: # Facing up
+            light_pos = (pos[0], pos[1])
+        elif angle == 180: # Facing down
+            light_pos = (pos[0], pos[1])
+        elif angle == 90: # Facing left
+            light_pos = (pos[0], pos[1])
+        else: # Facing right
+            light_pos = (pos[0], pos[1])
+            
+        # Draw a subtle glow
+        glow_surf = pygame.Surface((radius*4, radius*4), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*color, 80), (radius*2, radius*2), radius*1.5)
+        surface.blit(glow_surf, (light_pos[0]-radius*2, light_pos[1]-radius*2))
+        
+        # Draw the solid light
+        pygame.draw.circle(surface, color, light_pos, radius)
     
-    # North approaching (NS light) - top-right
-    pygame.draw.circle(screen, ns_color, (center_x + offset_x, center_y - offset_y), radius)
-    # South approaching (NS light) - bottom-left
-    pygame.draw.circle(screen, ns_color, (center_x - offset_x, center_y + offset_y), radius)
+    # Position them near the stop lines on the yellow line separator
+    offset_y = ROAD_WIDTH // 2 + 12
+    offset_x = ROAD_WIDTH // 2 + 12
     
-    # West approaching (EW light) - top-left
-    pygame.draw.circle(screen, ew_color, (center_x - offset_x, center_y - offset_y), radius)
-    # East approaching (EW light) - bottom-right
-    pygame.draw.circle(screen, ew_color, (center_x + offset_x, center_y + offset_y), radius)
+    # North approaching (NS light) - Stop line is at top, so light is at top, facing North (0 degrees)
+    draw_light(screen, tl_box_img, ns_color, (center_x, center_y - offset_y), 0)
+    
+    # South approaching (NS light) - Stop line is at bottom, facing South (180 degrees)
+    draw_light(screen, tl_box_img, ns_color, (center_x, center_y + offset_y), 180)
+    
+    # West approaching (EW light) - Stop line is left, facing West (90 degrees)
+    draw_light(screen, tl_box_img, ew_color, (center_x - offset_x, center_y), 90)
+    
+    # East approaching (EW light) - Stop line is right, facing East (-90 degrees)
+    draw_light(screen, tl_box_img, ew_color, (center_x + offset_x, center_y), -90)
 
 def main():
     pygame.init()
@@ -91,6 +114,9 @@ def main():
     
     # clock object that ensures animation has the same speed on all machines
     clock = pygame.time.Clock()
+    
+    # Load assets
+    tl_box_img = pygame.image.load('assets/tl_box.png').convert_alpha()
 
     traffic_lights = TrafficLightSystem()
     spawner = Spawner(rate=0.5) # 0.5 cars per second
@@ -149,7 +175,7 @@ def main():
 
         # Draw environment
         draw_intersection(screen)
-        draw_traffic_lights(screen, traffic_lights)
+        draw_traffic_lights(screen, traffic_lights, tl_box_img)
         
         # Draw cars
         for direction in ['N', 'S', 'E', 'W']:
