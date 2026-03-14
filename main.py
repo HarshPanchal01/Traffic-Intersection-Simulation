@@ -133,9 +133,12 @@ def main():
     print('--------------------------------')
     print('Usage:')
     print('Press (q) to stop the simulation')
+    print('Press (p) to pause the simulation')
+    print('Press (r) to resume the simulation')
     print('--------------------------------')
 
     running = True
+    is_paused = False
     while running:
         # Calculate delta time in seconds
         dt = clock.tick(60) / 1000.0
@@ -143,35 +146,41 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    running = False
+                elif event.key == pygame.K_p:
+                    is_paused = True
+                elif event.key == pygame.K_r:
+                    is_paused = False
 
-        # Update logic
-        traffic_lights.update(dt)
-        
-        # Spawner logic
-        new_cars = spawner.update(dt)
-        for direction in new_cars:
-            if not cars[direction] or cars[direction][-1].state[0] > 60.0:
-                cars[direction].append(Car(direction, start_positions[direction]))
+        if not is_paused:
+            # Update logic
+            traffic_lights.update(dt)
+            
+            # Spawner logic
+            new_cars = spawner.update(dt)
+            for direction, turn in new_cars:
+                if not cars[direction] or cars[direction][-1].state[0] > 60.0:
+                    cars[direction].append(Car(direction, turn, start_positions[direction]))
 
-        # Update cars
-        for direction in ['N', 'S', 'E', 'W']:
-            if direction in ['N', 'S']:
-                light_state = traffic_lights.ns_state
-            else:
-                light_state = traffic_lights.ew_state
-                
-            for i, car in enumerate(cars[direction]):
-                dist_ahead = None
-                if i > 0:
-                    dist_ahead = cars[direction][i-1].state[0] - car.state[0]
+            # Update cars
+            for direction in ['N', 'S', 'E', 'W']:
+                if direction in ['N', 'S']:
+                    light_state = traffic_lights.ns_state
+                else:
+                    light_state = traffic_lights.ew_state
                     
-                car.update(dt, light_state, dist_ahead)
+                for i, car in enumerate(cars[direction]):
+                    dist_ahead = None
+                    if i > 0:
+                        dist_ahead = cars[direction][i-1].state[0] - car.state[0]
+                        
+                    car.update(dt, light_state, dist_ahead)
 
-        # Remove cars that have left the screen
-        for direction in ['N', 'S', 'E', 'W']:
-            cars[direction] = [car for car in cars[direction] if car.state[0] < 900.0]
+            # Remove cars that have left the screen
+            for direction in ['N', 'S', 'E', 'W']:
+                cars[direction] = [car for car in cars[direction] if car.state[0] < 900.0]
 
         # Draw environment
         draw_intersection(screen)

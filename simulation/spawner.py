@@ -22,6 +22,8 @@ class Spawner:
             self.timer -= self.time_to_next
             # Pick a random direction
             direction = np.random.choice(['N', 'S', 'E', 'W'])
-            spawned.append(direction)
+            # Pick a random turn with weighted probabilities
+            turn = np.random.choice(['straight', 'left', 'right'], p=[0.6, 0.2, 0.2])
+            spawned.append((direction, turn))
             self.time_to_next = self._get_next_time()
         return spawned
