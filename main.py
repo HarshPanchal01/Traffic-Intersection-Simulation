@@ -93,6 +93,16 @@ def main():
     clock = pygame.time.Clock()
 
     traffic_lights = TrafficLightSystem()
+    spawner = Spawner(rate=0.5) # 0.5 cars per second
+    
+    cars = {'N': [], 'S': [], 'E': [], 'W': []}
+    
+    start_positions = {
+        'N': (360, 0),
+        'S': (440, 800),
+        'E': (800, 360),
+        'W': (0, 440)
+    }
 
     print('--------------------------------')
     print('Usage:')
@@ -112,12 +122,39 @@ def main():
 
         # Update logic
         traffic_lights.update(dt)
+        
+        # Spawner logic
+        new_cars = spawner.update(dt)
+        for direction in new_cars:
+            if not cars[direction] or cars[direction][-1].state[0] > 60.0:
+                cars[direction].append(Car(direction, start_positions[direction]))
+
+        # Update cars
+        for direction in ['N', 'S', 'E', 'W']:
+            if direction in ['N', 'S']:
+                light_state = traffic_lights.ns_state
+            else:
+                light_state = traffic_lights.ew_state
+                
+            for i, car in enumerate(cars[direction]):
+                dist_ahead = None
+                if i > 0:
+                    dist_ahead = cars[direction][i-1].state[0] - car.state[0]
+                    
+                car.update(dt, light_state, dist_ahead)
+
+        # Remove cars that have left the screen
+        for direction in ['N', 'S', 'E', 'W']:
+            cars[direction] = [car for car in cars[direction] if car.state[0] < 900.0]
 
         # Draw environment
         draw_intersection(screen)
         draw_traffic_lights(screen, traffic_lights)
         
-        # TODO: Update and draw cars
+        # Draw cars
+        for direction in ['N', 'S', 'E', 'W']:
+            for car in cars[direction]:
+                car.draw(screen)
         
         pygame.display.flip()
 
