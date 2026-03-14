@@ -43,6 +43,52 @@ def draw_intersection(screen):
     pygame.draw.line(screen, YELLOW_LINE, (center_x + ROAD_WIDTH // 2, center_y - 2), (WIDTH, center_y - 2), 2)
     pygame.draw.line(screen, YELLOW_LINE, (center_x + ROAD_WIDTH // 2, center_y + 2), (WIDTH, center_y + 2), 2)
     
+    # Draw lane dividers (dashed white lines)
+    def draw_dashed_line(surface, color, start_pos, end_pos, width=1, dash_length=10):
+        x1, y1 = start_pos
+        x2, y2 = end_pos
+        if x1 == x2:
+            ycoords = [y for y in range(min(y1, y2), max(y1, y2), dash_length)]
+            for i in range(0, len(ycoords) - 1, 2):
+                pygame.draw.line(surface, color, (x1, ycoords[i]), (x1, ycoords[i+1]), width)
+        elif y1 == y2:
+            xcoords = [x for x in range(min(x1, x2), max(x1, x2), dash_length)]
+            for i in range(0, len(xcoords) - 1, 2):
+                pygame.draw.line(surface, color, (xcoords[i], y1), (xcoords[i+1], y1), width)
+
+    draw_dashed_line(screen, WHITE, (center_x - 40, 0), (center_x - 40, center_y - ROAD_WIDTH // 2), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 40, 0), (center_x + 40, center_y - ROAD_WIDTH // 2), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 40, center_y + ROAD_WIDTH // 2), (center_x - 40, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 40, center_y + ROAD_WIDTH // 2), (center_x + 40, HEIGHT), 2)
+    
+    draw_dashed_line(screen, WHITE, (0, center_y - 40), (center_x - ROAD_WIDTH // 2, center_y - 40), 2)
+    draw_dashed_line(screen, WHITE, (0, center_y + 40), (center_x - ROAD_WIDTH // 2, center_y + 40), 2)
+    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - 40), (WIDTH, center_y - 40), 2)
+    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y + 40), (WIDTH, center_y + 40), 2)
+    
+    # Draw left turn arrows in the left lanes
+    def draw_left_arrow(surface, pos, angle):
+        arrow_surface = pygame.Surface((30, 40), pygame.SRCALPHA)
+        # Stem
+        pygame.draw.rect(arrow_surface, WHITE, (18, 15, 6, 25))
+        # Curve
+        pygame.draw.rect(arrow_surface, WHITE, (10, 15, 14, 6))
+        # Arrowhead (pointing left)
+        pygame.draw.polygon(arrow_surface, WHITE, [(10, 10), (2, 18), (10, 26)])
+        
+        rotated_arrow = pygame.transform.rotate(arrow_surface, angle)
+        rect = rotated_arrow.get_rect(center=pos)
+        surface.blit(rotated_arrow, rect)
+
+    # Southbound (North incoming) left lane
+    draw_left_arrow(screen, (center_x - 20, center_y - ROAD_WIDTH // 2 - 40), 180)
+    # Northbound (South incoming) left lane
+    draw_left_arrow(screen, (center_x + 20, center_y + ROAD_WIDTH // 2 + 40), 0)
+    # Eastbound (West incoming) left lane
+    draw_left_arrow(screen, (center_x - ROAD_WIDTH // 2 - 40, center_y + 20), -90)
+    # Westbound (East incoming) left lane
+    draw_left_arrow(screen, (center_x + ROAD_WIDTH // 2 + 40, center_y - 20), 90)
+
     # Draw stop lines
     # North (cars coming from north, stop line on the right side of the road)
     pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x, center_y - ROAD_WIDTH // 2), 4)
@@ -123,6 +169,8 @@ def main():
     
     cars = {'N': [], 'S': [], 'E': [], 'W': []}
     
+    # Note: coordinates are the center lines of the respective incoming roads, 
+    # the Trajectory class will apply a lateral offset based on lane (-20 for left, +20 for right).
     start_positions = {
         'N': (360, 0),
         'S': (440, 800),
@@ -160,9 +208,10 @@ def main():
             
             # Spawner logic
             new_cars = spawner.update(dt)
-            for direction, turn in new_cars:
-                if not cars[direction] or cars[direction][-1].state[0] > 60.0:
-                    cars[direction].append(Car(direction, turn, start_positions[direction]))
+            for direction, turn, lane in new_cars:
+                lane_cars = [c for c in cars[direction] if c.current_lane == lane]
+                if not lane_cars or lane_cars[-1].state[0] > 60.0:
+                    cars[direction].append(Car(direction, turn, lane))
 
             # Update cars
             for direction in ['N', 'S', 'E', 'W']:
@@ -172,11 +221,63 @@ def main():
                     light_state = traffic_lights.ew_state
                     
                 for i, car in enumerate(cars[direction]):
+                    # Find distance to car ahead IN THE SAME LANE
                     dist_ahead = None
-                    if i > 0:
-                        dist_ahead = cars[direction][i-1].state[0] - car.state[0]
+                    lane_cars_ahead = [c for c in cars[direction][:i] if c.current_lane == car.current_lane or c.target_lane == car.current_lane]
+                    if lane_cars_ahead:
+                        dist_ahead = lane_cars_ahead[-1].state[0] - car.state[0]
                         
-                    car.update(dt, light_state, dist_ahead)
+                    must_yield_left = False
+                    can_right_on_red = False
+                    
+                    if car.turn == 'left':
+                        opposing_dir = {'N':'S', 'S':'N', 'E':'W', 'W':'E'}[direction]
+                        for opp_car in cars[opposing_dir]:
+                            if opp_car.turn in ['straight', 'right']:
+                                # If light is yellow or red, opposing cars before the stop line will stop.
+                                if light_state in ['YELLOW', 'RED'] and opp_car.state[0] < 320:
+                                    continue
+                                    
+                                # If opposing car is in intersection
+                                if 320 <= opp_car.state[0] < 450:
+                                    must_yield_left = True
+                                    break
+                                # If opposing car is approaching and moving fast enough to be a threat
+                                elif opp_car.state[0] < 320:
+                                    # Calculate time for opposing car to reach intersection
+                                    v_opp = opp_car.state[1]
+                                    if v_opp > 0.1:
+                                        time_to_intersect = (320 - opp_car.state[0]) / v_opp
+                                        # If it will reach the intersection in the next 3.5 seconds, yield
+                                        if time_to_intersect < 3.5:
+                                            must_yield_left = True
+                                            break
+                                    
+                    if car.turn == 'right' and light_state == 'RED':
+                        cross_left_dir = {'N':'E', 'S':'W', 'E':'S', 'W':'N'}[direction]
+                        opposing_dir = {'N':'S', 'S':'N', 'E':'W', 'W':'E'}[direction]
+                        
+                        is_safe = True
+                        for cross_car in cars[cross_left_dir]:
+                            if cross_car.turn in ['straight', 'left']:
+                                if 320 < cross_car.state[0] < 480:
+                                    is_safe = False
+                                    break
+                                elif 150 < cross_car.state[0] <= 320 and cross_car.state[1] > 2.0:
+                                    is_safe = False
+                                    break
+                        if is_safe:
+                            for opp_car in cars[opposing_dir]:
+                                if opp_car.turn == 'left':
+                                    if 320 < opp_car.state[0] < 450:
+                                        is_safe = False
+                                        break
+                                    elif 200 < opp_car.state[0] <= 320 and opp_car.state[1] > 2.0:
+                                        is_safe = False
+                                        break
+                        can_right_on_red = is_safe
+                        
+                    car.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red)
 
             # Remove cars that have left the screen
             for direction in ['N', 'S', 'E', 'W']:

@@ -24,6 +24,7 @@ class Spawner:
             direction = np.random.choice(['N', 'S', 'E', 'W'])
             # Pick a random turn with weighted probabilities
             turn = np.random.choice(['straight', 'left', 'right'], p=[0.6, 0.2, 0.2])
-            spawned.append((direction, turn))
+            lane = 'left' if turn == 'left' else 'right'
+            spawned.append((direction, turn, lane))
             self.time_to_next = self._get_next_time()
         return spawned
