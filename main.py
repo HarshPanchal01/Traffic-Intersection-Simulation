@@ -7,6 +7,7 @@ import os
 from simulation.car import Car
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
+from analytics.metrics import MetricsManager
 
 # Set up the colors
 BLACK = (0, 0, 0)
@@ -214,7 +215,7 @@ def draw_legend(screen):
         text = font.render(line, True, WHITE)
         screen.blit(text, (20, 20 + i * 22))
 
-def draw_stats(screen, active_cars, collision_count, sim_time):
+def draw_stats(screen, active_cars, collision_count, sim_time, metrics):
     font = pygame.font.SysFont("courier new", 16)
 
     # Format time as MM:SS.ss
@@ -226,11 +227,14 @@ def draw_stats(screen, active_cars, collision_count, sim_time):
         "simulation details:",
         f"time: {time_str}",
         f"active cars: {active_cars}",
-        f"total collisions: {collision_count}"
+        f"total collisions: {collision_count}",
+        f"avg wait: {metrics.get_avg_wait_time():.1f}s",
+        f"throughput: {metrics.get_throughput(sim_time):.1f} cars/min",
+        f"max queue: {metrics.max_queue_length}"
     ]
     
     # Semi-transparent background
-    stats_width = 220
+    stats_width = 280
     stats_height = len(lines) * 22 + 10
     overlay = pygame.Surface((stats_width, stats_height), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 150))
@@ -259,6 +263,7 @@ def main():
     running = True
     is_paused = False
     total_sim_time = 0.0
+    metrics = MetricsManager()
     
     # Start recording automatically
     is_recording = True
@@ -394,11 +399,16 @@ def main():
                             collided_pairs.add(pair_id)
                             print(f"[{total_sim_time:06.2f}s] Collision detected!")
 
+            # Update Metrics
+            metrics.update_max_queue(cars)
+
             # Remove cars that have left the screen
             for direction in ['N', 'S', 'E', 'W']:
                 for car in cars[direction]:
                     if car.state[0] >= 850.0:
                         collided_pairs = {p for p in collided_pairs if id(car) not in p}
+                        # Record metrics for finished car
+                        metrics.add_completed_car(car)
                 cars[direction] = [car for car in cars[direction] if car.state[0] < 850.0]
 
         # Draw environment
@@ -416,7 +426,7 @@ def main():
         
         # Draw legends and stats
         draw_legend(screen)
-        draw_stats(screen, active_count, collision_count, total_sim_time)
+        draw_stats(screen, active_count, collision_count, total_sim_time, metrics)
         
         pygame.display.flip()
         

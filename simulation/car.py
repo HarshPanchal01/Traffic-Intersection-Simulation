@@ -141,6 +141,10 @@ class Car:
         self.width = 20
         self.color = (np.random.randint(50, 255), np.random.randint(50, 255), np.random.randint(50, 255))
 
+        # Metrics
+        self.wait_time = 0.0
+        self.has_exited = False
+
         # Pre-generate un-rotated images
         self.img_off = self._create_base_image(False, False)
         self.img_left = self._create_base_image(True, False)
@@ -269,6 +273,14 @@ class Car:
             self.state = self.solver.y
             if self.state[1] < 0:
                 self.state[1] = 0.0
+
+        # Update wait time if stationary
+        if self.state[1] < 0.1:
+            self.wait_time += dt
+
+        # Mark as exited once it clears the intersection
+        if not self.has_exited and self.state[0] > self.trajectory.straight_dist + self.trajectory.arc_len:
+            self.has_exited = True
 
     def get_world_pos(self):
         bx, by, ang, rx, ry = self.trajectory.get_position_and_angle(self.state[0])
