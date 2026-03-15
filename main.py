@@ -214,6 +214,26 @@ def draw_legend(screen):
         text = font.render(line, True, WHITE)
         screen.blit(text, (20, 20 + i * 22))
 
+def draw_stats(screen, active_cars, collision_count):
+    font = pygame.font.SysFont("courier new", 16)
+
+    lines = [
+        "simulation details:",
+        f"active cars: {active_cars}",
+        f"total collisions: {collision_count}"
+    ]
+    
+    # Semi-transparent background
+    stats_width = 220
+    stats_height = len(lines) * 22 + 10
+    overlay = pygame.Surface((stats_width, stats_height), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 150))
+    screen.blit(overlay, (WIDTH - stats_width - 10, 10))
+    
+    for i, line in enumerate(lines):
+        text = font.render(line, True, WHITE)
+        screen.blit(text, (WIDTH - stats_width, 20 + i * 22))
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -241,6 +261,9 @@ def main():
     video_writer = cv2.VideoWriter(video_filename, fourcc, 60.0, (WIDTH, HEIGHT))
     print(f"Recording started: {video_filename}")
     
+    collision_count = 0
+    collided_pairs = set()
+
     while running:
         # Calculate delta time in seconds
         dt = clock.tick(60) / 1000.0
@@ -270,10 +293,11 @@ def main():
             new_cars = spawner.update(dt)
             for direction, turn, lane in new_cars:
                 lane_cars = [c for c in cars[direction] if c.lane == lane]
-                if not lane_cars or lane_cars[-1].state[0] > 60.0:
+                if not lane_cars or lane_cars[-1].state[0] > 10.0:
                     cars[direction].append(Car(direction, turn, lane))
 
             # Update cars
+            all_cars = []
             for direction in ['N', 'S', 'E', 'W']:
                 if direction in ['N', 'S']:
                     light_state = traffic_lights.ns_state
@@ -338,22 +362,49 @@ def main():
                         can_right_on_red = is_safe
                         
                     car.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red)
+                    all_cars.append(car)
+
+            # Collision detection
+            import math
+            for i in range(len(all_cars)):
+                for j in range(i + 1, len(all_cars)):
+                    car1 = all_cars[i]
+                    car2 = all_cars[j]
+                    
+                    pos1 = car1.get_world_pos()
+                    pos2 = car2.get_world_pos()
+                    
+                    dist = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+                    
+                    if dist < 30.0:
+                        pair_id = tuple(sorted((id(car1), id(car2))))
+                        if pair_id not in collided_pairs:
+                            collision_count += 1
+                            collided_pairs.add(pair_id)
 
             # Remove cars that have left the screen
             for direction in ['N', 'S', 'E', 'W']:
-                cars[direction] = [car for car in cars[direction] if car.state[0] < 900.0]
+                for car in cars[direction]:
+                    if car.state[0] >= 850.0:
+                        collided_pairs = {p for p in collided_pairs if id(car) not in p}
+                cars[direction] = [car for car in cars[direction] if car.state[0] < 850.0]
 
         # Draw environment
         draw_intersection(screen)
         draw_traffic_lights(screen, traffic_lights, tl_box_img)
         
         # Draw cars
+        active_count = 0
         for direction in ['N', 'S', 'E', 'W']:
             for car in cars[direction]:
                 car.draw(screen)
+                # Only count cars whose centers are actually on screen
+                if 0 <= car.state[0] <= 800:
+                    active_count += 1
         
-        # Draw legend
+        # Draw legends and stats
         draw_legend(screen)
+        draw_stats(screen, active_count, collision_count)
         
         pygame.display.flip()
         

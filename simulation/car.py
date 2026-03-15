@@ -121,7 +121,7 @@ class Car:
         self.trajectory = Trajectory(direction, turn)
 
         # State: [position_1d, velocity_1d]
-        self.state = [0.0, 15.0] # start at 0 local distance, initial speed 15
+        self.state = [-50.0, 15.0] # start off-screen, initial speed 15
 
         # Driver behaviors
         self.max_speed = np.random.uniform(25.0, 50.0)
@@ -270,10 +270,15 @@ class Car:
             if self.state[1] < 0:
                 self.state[1] = 0.0
 
-    def draw(self, screen):
+    def get_world_pos(self):
         bx, by, ang, rx, ry = self.trajectory.get_position_and_angle(self.state[0])
         cx = bx + rx * self.lateral_offset
         cy = by + ry * self.lateral_offset
+        return cx, cy
+
+    def draw(self, screen):
+        cx, cy = self.get_world_pos()
+        _, _, ang, _, _ = self.trajectory.get_position_and_angle(self.state[0])
 
         blink_on = False
         if self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
