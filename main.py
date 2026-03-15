@@ -214,11 +214,17 @@ def draw_legend(screen):
         text = font.render(line, True, WHITE)
         screen.blit(text, (20, 20 + i * 22))
 
-def draw_stats(screen, active_cars, collision_count):
+def draw_stats(screen, active_cars, collision_count, sim_time):
     font = pygame.font.SysFont("courier new", 16)
+
+    # Format time as MM:SS.ss
+    minutes = int(sim_time // 60)
+    seconds = sim_time % 60
+    time_str = f"{minutes:02d}:{seconds:05.2f}"
 
     lines = [
         "simulation details:",
+        f"time: {time_str}",
         f"active cars: {active_cars}",
         f"total collisions: {collision_count}"
     ]
@@ -252,6 +258,7 @@ def main():
     
     running = True
     is_paused = False
+    total_sim_time = 0.0
     
     # Start recording automatically
     is_recording = True
@@ -286,6 +293,7 @@ def main():
                     print(f"Snapshot saved: {filename}")
 
         if not is_paused:
+            total_sim_time += dt
             # Update logic
             traffic_lights.update(dt)
             
@@ -305,11 +313,14 @@ def main():
                     light_state = traffic_lights.ew_state
                     
                 for i, car in enumerate(cars[direction]):
-                    # Find distance to car ahead IN THE SAME LANE
+                    # Use 2D distance to car ahead IN THE SAME LANE for better following in curves
                     dist_ahead = None
                     lane_cars_ahead = [c for c in cars[direction][:i] if c.lane == car.lane]
                     if lane_cars_ahead:
-                        dist_ahead = lane_cars_ahead[-1].state[0] - car.state[0]
+                        car_ahead = lane_cars_ahead[-1]
+                        pos1 = car.get_world_pos()
+                        pos2 = car_ahead.get_world_pos()
+                        dist_ahead = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
                         
                     must_yield_left = False
                     can_right_on_red = False
@@ -322,8 +333,8 @@ def main():
                                 if light_state in ['YELLOW', 'RED'] and opp_car.state[0] < 320:
                                     continue
                                     
-                                # If opposing car is in intersection
-                                if 320 <= opp_car.state[0] < 450:
+                                # If opposing car is in intersection and before the midpoint (center)
+                                if 320 <= opp_car.state[0] < 400:
                                     must_yield_left = True
                                     break
                                 # If opposing car is approaching and moving fast enough to be a threat
@@ -381,6 +392,7 @@ def main():
                         if pair_id not in collided_pairs:
                             collision_count += 1
                             collided_pairs.add(pair_id)
+                            print(f"[{total_sim_time:06.2f}s] Collision detected between {car1.direction}{car1.lane} and {car2.direction}{car2.lane}")
 
             # Remove cars that have left the screen
             for direction in ['N', 'S', 'E', 'W']:
@@ -404,7 +416,7 @@ def main():
         
         # Draw legends and stats
         draw_legend(screen)
-        draw_stats(screen, active_count, collision_count)
+        draw_stats(screen, active_count, collision_count, total_sim_time)
         
         pygame.display.flip()
         
