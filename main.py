@@ -206,12 +206,12 @@ def main():
     
     # Note: coordinates are the center lines of the respective incoming roads, 
     # the Trajectory class will apply a lateral offset based on lane (-25 for left, +25 for right).
-    start_positions = {
-        'N': (350, 0),
-        'S': (450, 800),
-        'E': (800, 350),
-        'W': (0, 450)
-    }
+    #start_positions = {
+    #    'N': (350, 0),
+    #    'S': (450, 800),
+    #    'E': (800, 350),
+    #    'W': (0, 450)
+    #}
 
     print('--------------------------------')
     print('Usage:')
