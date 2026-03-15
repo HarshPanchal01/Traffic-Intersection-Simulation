@@ -76,7 +76,7 @@ def draw_intersection(screen):
         large_surf.fill((0,0,0,0), (0, 0, 40, 150))
         
         # Draw stem
-        pygame.draw.rect(large_surf, WHITE, (74, 66, 16, 60))
+        pygame.draw.rect(large_surf, WHITE, (74, 66, 16, 50))
         # Draw head
         pygame.draw.polygon(large_surf, WHITE, [(40, 0), (0, 24), (40, 48)])
         
@@ -95,7 +95,7 @@ def draw_intersection(screen):
         large_surf.fill((0,0,0,0), (0, 100, 100, 50))
         
         # Stem
-        pygame.draw.rect(large_surf, WHITE, (22, 40, 16, 110))
+        pygame.draw.rect(large_surf, WHITE, (22, 40, 16, 85))
         # Straight head
         pygame.draw.polygon(large_surf, WHITE, [(6, 40), (30, 0), (54, 40)])
         # Right head
