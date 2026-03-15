@@ -1,5 +1,9 @@
 import pygame
 import sys
+import datetime
+import cv2
+import numpy as np
+import os
 from simulation.car import Car
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
@@ -188,6 +192,28 @@ def draw_traffic_lights(screen, traffic_lights, tl_box_img):
     # East approaching (EW light) - Stop line is right, facing East (-90 degrees)
     draw_light(screen, tl_box_img, ew_color, (center_x + offset_x, center_y), -90)
 
+def draw_legend(screen):
+    font = pygame.font.SysFont("courier new", 16)
+
+    lines = [
+        "controls:",
+        "q: quit & save",
+        "p: pause",
+        "r: resume",
+        "s: snapshot"
+    ]
+    
+    # Semi-transparent background
+    legend_width = 160
+    legend_height = len(lines) * 22 + 10
+    overlay = pygame.Surface((legend_width, legend_height), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 150))
+    screen.blit(overlay, (10, 10))
+    
+    for i, line in enumerate(lines):
+        text = font.render(line, True, WHITE)
+        screen.blit(text, (20, 20 + i * 22))
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -204,24 +230,17 @@ def main():
     
     cars = {'N': [], 'S': [], 'E': [], 'W': []}
     
-    # Note: coordinates are the center lines of the respective incoming roads, 
-    # the Trajectory class will apply a lateral offset based on lane (-25 for left, +25 for right).
-    #start_positions = {
-    #    'N': (350, 0),
-    #    'S': (450, 800),
-    #    'E': (800, 350),
-    #    'W': (0, 450)
-    #}
-
-    print('--------------------------------')
-    print('Usage:')
-    print('Press (q) to stop the simulation')
-    print('Press (p) to pause the simulation')
-    print('Press (r) to resume the simulation')
-    print('--------------------------------')
-
     running = True
     is_paused = False
+    
+    # Start recording automatically
+    is_recording = True
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    video_filename = f"simulation_{timestamp}.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(video_filename, fourcc, 60.0, (WIDTH, HEIGHT))
+    print(f"Recording started: {video_filename}")
+    
     while running:
         # Calculate delta time in seconds
         dt = clock.tick(60) / 1000.0
@@ -236,6 +255,12 @@ def main():
                     is_paused = True
                 elif event.key == pygame.K_r:
                     is_paused = False
+                elif event.key == pygame.K_s:
+                    # Capture snapshot
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"snapshot_{timestamp}.png"
+                    pygame.image.save(screen, filename)
+                    print(f"Snapshot saved: {filename}")
 
         if not is_paused:
             # Update logic
@@ -327,8 +352,23 @@ def main():
             for car in cars[direction]:
                 car.draw(screen)
         
+        # Draw legend
+        draw_legend(screen)
+        
         pygame.display.flip()
+        
+        # Save frame to video if recording
+        if is_recording and video_writer:
+            # Convert Pygame surface to OpenCV image (RGB -> BGR)
+            frame_data = pygame.surfarray.array3d(screen)
+            frame_data = np.transpose(frame_data, (1, 0, 2))
+            frame_data = cv2.cvtColor(frame_data, cv2.COLOR_RGB2BGR)
+            video_writer.write(frame_data)
 
+    if video_writer:
+        video_writer.release()
+        print(f"Video saved: {video_filename}")
+        
     pygame.quit()
     sys.exit(0)
 
