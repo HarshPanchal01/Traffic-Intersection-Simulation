@@ -32,26 +32,9 @@ venv/
 .DS_Store
 Thumbs.db
 
-# IDEs
+# IDE
 .vscode/
-.idea/
-
-# LaTeX
-*.aux
-*.log
-*.out
-*.fls
-*.fdb_latexmk
-*.synctex(gz)
-*.bbl
-*.blg
-*.toc
-*.lof
-*.lot
-*.pdf
 
 # Project specific
-*.mp4
-*.png
 GEMINI.md
 gemini_context/

@@ -1,3 +1,5 @@
+import numpy as np
+
 class TrafficLightSystem:
     def __init__(self, ns_green=10.0, ns_yellow=3.0, ew_green=10.0, ew_yellow=3.0):
         self.ns_green = ns_green
@@ -5,9 +7,13 @@ class TrafficLightSystem:
         self.ew_green = ew_green
         self.ew_yellow = ew_yellow
         
-        # States: NS_GREEN, NS_YELLOW, EW_GREEN, EW_YELLOW
+        # States: NS_GREEN, NS_YELLOW, ALL_RED_NS, EW_GREEN, EW_YELLOW, ALL_RED_EW
         self.state = "NS_GREEN"
         self.timer = 0.0
+        self.current_all_red_time = 0.0
+
+    def _get_random_all_red_time(self):
+        return np.random.uniform(1.0, 3.0)
 
     def update(self, dt):
         self.timer += dt
@@ -16,23 +22,31 @@ class TrafficLightSystem:
             self.state = "NS_YELLOW"
             self.timer -= self.ns_green
         elif self.state == "NS_YELLOW" and self.timer >= self.ns_yellow:
-            self.state = "EW_GREEN"
+            self.state = "ALL_RED_NS"
             self.timer -= self.ns_yellow
+            self.current_all_red_time = self._get_random_all_red_time()
+        elif self.state == "ALL_RED_NS" and self.timer >= self.current_all_red_time:
+            self.state = "EW_GREEN"
+            self.timer -= self.current_all_red_time
         elif self.state == "EW_GREEN" and self.timer >= self.ew_green:
             self.state = "EW_YELLOW"
             self.timer -= self.ew_green
         elif self.state == "EW_YELLOW" and self.timer >= self.ew_yellow:
-            self.state = "NS_GREEN"
+            self.state = "ALL_RED_EW"
             self.timer -= self.ew_yellow
+            self.current_all_red_time = self._get_random_all_red_time()
+        elif self.state == "ALL_RED_EW" and self.timer >= self.current_all_red_time:
+            self.state = "NS_GREEN"
+            self.timer -= self.current_all_red_time
 
     @property
     def ns_state(self):
         if self.state == "NS_GREEN": return "GREEN"
         if self.state == "NS_YELLOW": return "YELLOW"
-        return "RED"
+        return "RED" # Applies for ALL_RED_NS, EW_GREEN, EW_YELLOW, ALL_RED_EW
 
     @property
     def ew_state(self):
         if self.state == "EW_GREEN": return "GREEN"
         if self.state == "EW_YELLOW": return "YELLOW"
-        return "RED"
+        return "RED" # Applies for ALL_RED_EW, NS_GREEN, NS_YELLOW, ALL_RED_NS

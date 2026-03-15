@@ -10,38 +10,38 @@ class Trajectory:
 
         # start_pos is the center line separating the two lanes
         if direction == 'N':
-            self.start_pos = (360, 0)
+            self.start_pos = (350, 0)
             self.start_angle = 180
             self.dir_vec = (0, 1)
             self.right_vec = (-1, 0)
         elif direction == 'S':
-            self.start_pos = (440, 800)
+            self.start_pos = (450, 800)
             self.start_angle = 0
             self.dir_vec = (0, -1)
             self.right_vec = (1, 0)
         elif direction == 'E':
-            self.start_pos = (800, 360)
+            self.start_pos = (800, 350)
             self.start_angle = 90
             self.dir_vec = (-1, 0)
             self.right_vec = (0, -1)
         elif direction == 'W':
-            self.start_pos = (0, 440)
+            self.start_pos = (0, 450)
             self.start_angle = -90
             self.dir_vec = (1, 0)
             self.right_vec = (0, 1)
 
-        self.straight_dist = 320.0
+        self.straight_dist = 300.0
         self.arc_len = 0.0
 
         if turn == 'right':
-            self.R = 40.0
+            self.R = 50.0
             self.arc_len = self.R * math.pi / 2
             arc_start_pos = (self.start_pos[0] + self.dir_vec[0] * self.straight_dist,
                              self.start_pos[1] + self.dir_vec[1] * self.straight_dist)
             self.arc_center = (arc_start_pos[0] + self.right_vec[0] * self.R,
                                arc_start_pos[1] + self.right_vec[1] * self.R)
         elif turn == 'left':
-            self.R = 120.0
+            self.R = 150.0
             self.arc_len = self.R * math.pi / 2
             arc_start_pos = (self.start_pos[0] + self.dir_vec[0] * self.straight_dist,
                              self.start_pos[1] + self.dir_vec[1] * self.straight_dist)
@@ -115,9 +115,8 @@ class Car:
         Car.load_sprites()
         self.direction = direction # 'N', 'S', 'E', 'W'
         self.turn = turn # 'straight', 'left', 'right'
-        self.current_lane = lane # 'left', 'right'
-        self.target_lane = lane
-        self.lateral_offset = -20.0 if lane == 'left' else 20.0
+        self.lane = lane # 'left', 'right'
+        self.lateral_offset = -25.0 if lane == 'left' else 25.0
 
         self.trajectory = Trajectory(direction, turn)
 
@@ -133,6 +132,7 @@ class Car:
         self.has_stopped_for_red = False
 
         self.t = 0.0
+
         self.solver = ode(self.f)
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
@@ -168,33 +168,19 @@ class Car:
     def update(self, dt, light_state, distance_to_car_ahead, must_yield_left=False, can_right_on_red=False):
         v = self.state[1]
         dist_to_stop_line = self.trajectory.straight_dist - self.state[0]
-
-        # Post-turn merging logic
-        if self.state[0] > self.trajectory.straight_dist + self.trajectory.arc_len + 40.0:
-            if self.turn == 'left' and self.current_lane == 'left':
-                self.target_lane = 'right' # Merge back to right lane after left turn
-
-        # Lateral offset smoothing
-        target_offset = -20.0 if self.target_lane == 'left' else 20.0
-        if self.lateral_offset < target_offset:
-            self.lateral_offset = min(target_offset, self.lateral_offset + 30.0 * dt)
-        elif self.lateral_offset > target_offset:
-            self.lateral_offset = max(target_offset, self.lateral_offset - 30.0 * dt)
-
-        self.current_lane = 'left' if self.lateral_offset < 0 else 'right'
-
+        
         if light_state == 'GREEN':
             self.has_stopped_for_red = False
-
+        
         a = 0.0
         braking_dist = (v**2) / (2 * self.braking) if v > 0 else 0.0
-
+        
         stopping_for_light = False
         stopping_for_yield = False
-
+        
         if light_state in ['RED', 'YELLOW'] and dist_to_stop_line > 0:
             if light_state == 'RED':
-                if self.turn == 'right' and self.current_lane == 'right':
+                if self.turn == 'right' and self.lane == 'right':
                     if dist_to_stop_line < 35.0 and v < 1.0:
                         self.has_stopped_for_red = True
 
@@ -250,24 +236,28 @@ class Car:
                 target_speed = self.max_speed
 
                 clearing_intersection = False
-                if self.turn == 'left' and light_state in ['YELLOW', 'RED'] and self.state[0] > self.trajectory.straight_dist - 30:
+                # If past or very close to the stop line and light is YELLOW/RED, speed up to clear
+                if light_state in ['YELLOW', 'RED'] and self.state[0] > self.trajectory.straight_dist - 15:
                     clearing_intersection = True
-                if self.state[0] > self.trajectory.straight_dist - 50 and self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
+
+                # Reduce speed for turns
+                if self.turn != 'straight' and self.state[0] > self.trajectory.straight_dist - 50 and self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
                     if clearing_intersection:
-                        target_speed = self.max_speed
+                        target_speed = self.max_speed * 1.2 # Go faster than normal to clear intersection
                     else:
                         target_speed = self.max_speed * 0.5
+                elif clearing_intersection:
+                    target_speed = self.max_speed * 1.2
 
                 if v < target_speed:
                     if clearing_intersection:
-                        a = self.acceleration * 2.0
+                        a = self.acceleration * 3.0 # punch it!
                     else:
                         a = self.acceleration
                 elif v > target_speed + 2.0:
                     a = -self.braking * 0.5
                 else:
                     a = 0.0
-
         if v < 0.0 and a < 0.0:
             a = 0.0
             self.state[1] = 0.0
@@ -289,21 +279,12 @@ class Car:
         if self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
             blink_on = (int(self.t * 2) % 2 == 0)
 
-        # Also blink if changing lanes
-        is_changing_lanes = (self.current_lane != self.target_lane) or (abs(self.lateral_offset) < 19.0)
-
         img_to_rotate = self.img_off
 
-        if is_changing_lanes and (int(self.t * 2) % 2 == 0):
-            if self.target_lane == 'left':
-                img_to_rotate = self.img_left
-            else:
-                img_to_rotate = self.img_right
-        else:
-            if self.turn == 'left' and blink_on:
-                img_to_rotate = self.img_left
-            elif self.turn == 'right' and blink_on:
-                img_to_rotate = self.img_right
+        if self.turn == 'left' and blink_on:
+            img_to_rotate = self.img_left
+        elif self.turn == 'right' and blink_on:
+            img_to_rotate = self.img_right
 
         rotated_img = pygame.transform.rotate(img_to_rotate, ang)
         rect = rotated_img.get_rect(center=(cx, cy))

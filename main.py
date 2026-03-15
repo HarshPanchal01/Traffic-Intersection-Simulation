@@ -7,16 +7,16 @@ from simulation.spawner import Spawner
 # Set up the colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
+RED = (204, 50, 50)
+GREEN = (45, 201, 55)
 BLUE = (0, 0, 255)
-YELLOW = (255, 255, 0)
+YELLOW = (231, 180, 22)
 GRASS_COLOR = (34, 139, 34)
 ROAD_COLOR = (50, 50, 50)
 YELLOW_LINE = (255, 204, 0)
 
 WIDTH, HEIGHT = 800, 800
-ROAD_WIDTH = 160
+ROAD_WIDTH = 200
 
 def draw_intersection(screen):
     # Fill background with grass
@@ -56,38 +56,73 @@ def draw_intersection(screen):
             for i in range(0, len(xcoords) - 1, 2):
                 pygame.draw.line(surface, color, (xcoords[i], y1), (xcoords[i+1], y1), width)
 
-    draw_dashed_line(screen, WHITE, (center_x - 40, 0), (center_x - 40, center_y - ROAD_WIDTH // 2), 2)
-    draw_dashed_line(screen, WHITE, (center_x + 40, 0), (center_x + 40, center_y - ROAD_WIDTH // 2), 2)
-    draw_dashed_line(screen, WHITE, (center_x - 40, center_y + ROAD_WIDTH // 2), (center_x - 40, HEIGHT), 2)
-    draw_dashed_line(screen, WHITE, (center_x + 40, center_y + ROAD_WIDTH // 2), (center_x + 40, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 50, 0), (center_x - 50, center_y - ROAD_WIDTH // 2), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 50, 0), (center_x + 50, center_y - ROAD_WIDTH // 2), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 50, center_y + ROAD_WIDTH // 2), (center_x - 50, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 50, center_y + ROAD_WIDTH // 2), (center_x + 50, HEIGHT), 2)
     
-    draw_dashed_line(screen, WHITE, (0, center_y - 40), (center_x - ROAD_WIDTH // 2, center_y - 40), 2)
-    draw_dashed_line(screen, WHITE, (0, center_y + 40), (center_x - ROAD_WIDTH // 2, center_y + 40), 2)
-    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - 40), (WIDTH, center_y - 40), 2)
-    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y + 40), (WIDTH, center_y + 40), 2)
+    draw_dashed_line(screen, WHITE, (0, center_y - 50), (center_x - ROAD_WIDTH // 2, center_y - 50), 2)
+    draw_dashed_line(screen, WHITE, (0, center_y + 50), (center_x - ROAD_WIDTH // 2, center_y + 50), 2)
+    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - 50), (WIDTH, center_y - 50), 2)
+    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y + 50), (WIDTH, center_y + 50), 2)
     
     # Draw left turn arrows in the left lanes
     def draw_left_arrow(surface, pos, angle):
-        arrow_surface = pygame.Surface((30, 40), pygame.SRCALPHA)
-        # Stem
-        pygame.draw.rect(arrow_surface, WHITE, (18, 15, 6, 25))
-        # Curve
-        pygame.draw.rect(arrow_surface, WHITE, (10, 15, 14, 6))
-        # Arrowhead (pointing left)
-        pygame.draw.polygon(arrow_surface, WHITE, [(10, 10), (2, 18), (10, 26)])
+        large_surf = pygame.Surface((100, 150), pygame.SRCALPHA)
+        # Draw arc ring (thickness 16). Outer radius 50, inner 34.
+        pygame.draw.circle(large_surf, WHITE, (40, 66), 50, 16)
+        # Erase bottom and left
+        large_surf.fill((0,0,0,0), (0, 66, 100, 100))
+        large_surf.fill((0,0,0,0), (0, 0, 40, 150))
         
+        # Draw stem
+        pygame.draw.rect(large_surf, WHITE, (74, 66, 16, 60))
+        # Draw head
+        pygame.draw.polygon(large_surf, WHITE, [(40, 0), (0, 24), (40, 48)])
+        
+        arrow_surface = pygame.transform.smoothscale(large_surf, (20, 30))
         rotated_arrow = pygame.transform.rotate(arrow_surface, angle)
         rect = rotated_arrow.get_rect(center=pos)
         surface.blit(rotated_arrow, rect)
 
-    # Southbound (North incoming) left lane
-    draw_left_arrow(screen, (center_x - 20, center_y - ROAD_WIDTH // 2 - 40), 180)
-    # Northbound (South incoming) left lane
-    draw_left_arrow(screen, (center_x + 20, center_y + ROAD_WIDTH // 2 + 40), 0)
-    # Eastbound (West incoming) left lane
-    draw_left_arrow(screen, (center_x - ROAD_WIDTH // 2 - 40, center_y + 20), -90)
-    # Westbound (East incoming) left lane
-    draw_left_arrow(screen, (center_x + ROAD_WIDTH // 2 + 40, center_y - 20), 90)
+    # Draw straight/right combined arrows in the right lanes
+    def draw_straight_right_arrow(surface, pos, angle):
+        large_surf = pygame.Surface((100, 150), pygame.SRCALPHA)
+        # Draw arc ring
+        pygame.draw.circle(large_surf, WHITE, (70, 100), 48, 16)
+        # Erase right and bottom
+        large_surf.fill((0,0,0,0), (70, 0, 30, 150))
+        large_surf.fill((0,0,0,0), (0, 100, 100, 50))
+        
+        # Stem
+        pygame.draw.rect(large_surf, WHITE, (22, 40, 16, 110))
+        # Straight head
+        pygame.draw.polygon(large_surf, WHITE, [(6, 40), (30, 0), (54, 40)])
+        # Right head
+        pygame.draw.polygon(large_surf, WHITE, [(70, 40), (100, 60), (70, 80)])
+        
+        arrow_surface = pygame.transform.smoothscale(large_surf, (20, 30))
+        rotated_arrow = pygame.transform.rotate(arrow_surface, angle)
+        rect = rotated_arrow.get_rect(center=pos)
+        surface.blit(rotated_arrow, rect)
+
+    arrow_offset = ROAD_WIDTH // 2 + 50
+
+    # Southbound (North incoming) lanes
+    draw_left_arrow(screen, (center_x - 25, center_y - arrow_offset), 180)
+    draw_straight_right_arrow(screen, (center_x - 75, center_y - arrow_offset), 180)
+    
+    # Northbound (South incoming) lanes
+    draw_left_arrow(screen, (center_x + 25, center_y + arrow_offset), 0)
+    draw_straight_right_arrow(screen, (center_x + 75, center_y + arrow_offset), 0)
+    
+    # Eastbound (West incoming) lanes
+    draw_left_arrow(screen, (center_x - arrow_offset, center_y + 25), -90)
+    draw_straight_right_arrow(screen, (center_x - arrow_offset, center_y + 75), -90)
+    
+    # Westbound (East incoming) lanes
+    draw_left_arrow(screen, (center_x + arrow_offset, center_y - 25), 90)
+    draw_straight_right_arrow(screen, (center_x + arrow_offset, center_y - 75), 90)
 
     # Draw stop lines
     # North (cars coming from north, stop line on the right side of the road)
@@ -170,12 +205,12 @@ def main():
     cars = {'N': [], 'S': [], 'E': [], 'W': []}
     
     # Note: coordinates are the center lines of the respective incoming roads, 
-    # the Trajectory class will apply a lateral offset based on lane (-20 for left, +20 for right).
+    # the Trajectory class will apply a lateral offset based on lane (-25 for left, +25 for right).
     start_positions = {
-        'N': (360, 0),
-        'S': (440, 800),
-        'E': (800, 360),
-        'W': (0, 440)
+        'N': (350, 0),
+        'S': (450, 800),
+        'E': (800, 350),
+        'W': (0, 450)
     }
 
     print('--------------------------------')
@@ -209,7 +244,7 @@ def main():
             # Spawner logic
             new_cars = spawner.update(dt)
             for direction, turn, lane in new_cars:
-                lane_cars = [c for c in cars[direction] if c.current_lane == lane]
+                lane_cars = [c for c in cars[direction] if c.lane == lane]
                 if not lane_cars or lane_cars[-1].state[0] > 60.0:
                     cars[direction].append(Car(direction, turn, lane))
 
@@ -223,7 +258,7 @@ def main():
                 for i, car in enumerate(cars[direction]):
                     # Find distance to car ahead IN THE SAME LANE
                     dist_ahead = None
-                    lane_cars_ahead = [c for c in cars[direction][:i] if c.current_lane == car.current_lane or c.target_lane == car.current_lane]
+                    lane_cars_ahead = [c for c in cars[direction][:i] if c.lane == car.lane]
                     if lane_cars_ahead:
                         dist_ahead = lane_cars_ahead[-1].state[0] - car.state[0]
                         

@@ -1,10 +1,4 @@
-imageio
-jupyterlab
 matplotlib
-notebook
 numpy
 scipy
-opencv-contrib-python
 pygame-ce
-pandas
-simpy
