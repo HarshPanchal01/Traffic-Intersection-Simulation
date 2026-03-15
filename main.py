@@ -392,7 +392,7 @@ def main():
                         if pair_id not in collided_pairs:
                             collision_count += 1
                             collided_pairs.add(pair_id)
-                            print(f"[{total_sim_time:06.2f}s] Collision detected between {car1.direction}{car1.lane} and {car2.direction}{car2.lane}")
+                            print(f"[{total_sim_time:06.2f}s] Collision detected!")
 
             # Remove cars that have left the screen
             for direction in ['N', 'S', 'E', 'W']:
