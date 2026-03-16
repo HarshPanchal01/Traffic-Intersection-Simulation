@@ -23,11 +23,167 @@ YELLOW_LINE = (255, 204, 0)
 WIDTH, HEIGHT = 800, 800
 ROAD_WIDTH = 200
 
-def draw_intersection(screen):
+BUILDING_COLORS = [
+    (140, 140, 140), # Gray
+    (160, 150, 140), # Beige
+    (130, 140, 150), # Blue-gray
+    (150, 130, 130)  # Brick
+]
+
+BUILDINGS = [
+    # Top-Left (UI area) - No buildings here, just grass
+    # Top-Right (UI area) - No buildings here, just grass
+    
+    # Bottom-Left
+    (30, 530, 150, 110, BUILDING_COLORS[2], 'ac_units'),
+    (200, 530, 70, 240, BUILDING_COLORS[3], 'helipad'),
+    (40, 660, 140, 110, BUILDING_COLORS[0], 'hospital'),
+    
+    # Bottom-Right
+    (530, 530, 110, 110, BUILDING_COLORS[1], 'solar_panels'),
+    (660, 530, 110, 240, BUILDING_COLORS[2], 'skylight'),
+    (530, 660, 110, 110, BUILDING_COLORS[3], 'ac_units'),
+]
+
+TREES = [
+    # Top-Left Park (shifted up to avoid sidewalk at bottom edge)
+    (30, 80), (210, 50), (100, 40), (260, 100), (50, 210),
+    (250, 180), (70, 250), (160, 260), (220, 240), (30, 140),
+    # Top-Right Park
+    (580, 180), (640, 130), (720, 200), (600, 240), (670, 260), (760, 160),
+    (620, 70), (740, 90), (690, 120), (560, 100)
+]
+
+def draw_ac(screen, ax, ay, size, t):
+    import math
+    pygame.draw.rect(screen, (180, 180, 180), (ax, ay, size, size))
+    center = (ax + size//2, ay + size//2)
+    radius = size//2 - 2
+    pygame.draw.circle(screen, (50, 50, 50), center, radius)
+    angle = t * 10 # Rotation speed
+    x1 = center[0] + (radius-1) * math.cos(angle)
+    y1 = center[1] + (radius-1) * math.sin(angle)
+    x2 = center[0] - (radius-1) * math.cos(angle)
+    y2 = center[1] - (radius-1) * math.sin(angle)
+    x3 = center[0] + (radius-1) * math.cos(angle + math.pi/2)
+    y3 = center[1] + (radius-1) * math.sin(angle + math.pi/2)
+    x4 = center[0] - (radius-1) * math.cos(angle + math.pi/2)
+    y4 = center[1] - (radius-1) * math.sin(angle + math.pi/2)
+    pygame.draw.line(screen, (200, 200, 200), (x1, y1), (x2, y2), 2)
+    pygame.draw.line(screen, (200, 200, 200), (x3, y3), (x4, y4), 2)
+
+def draw_buildings_and_parks(screen, t=0.0):
+    # Draw Pond and Benches in Top-Left Park (centered)
+    pond_cx, pond_cy = 140, 160
+    pygame.draw.ellipse(screen, (70, 130, 180), (pond_cx - 40, pond_cy - 25, 80, 50)) # Pond
+    pygame.draw.ellipse(screen, (100, 160, 210), (pond_cx - 35, pond_cy - 20, 70, 40)) # Pond inner
+    
+    # Bench Top
+    pygame.draw.rect(screen, (139, 69, 19), (pond_cx - 10, pond_cy - 40, 20, 8))
+    pygame.draw.rect(screen, (105, 50, 10), (pond_cx - 8, pond_cy - 43, 16, 3))
+    # Bench Bottom
+    pygame.draw.rect(screen, (139, 69, 19), (pond_cx - 10, pond_cy + 32, 20, 8))
+    pygame.draw.rect(screen, (105, 50, 10), (pond_cx - 8, pond_cy + 40, 16, 3))
+    # Bench Left
+    pygame.draw.rect(screen, (139, 69, 19), (pond_cx - 50, pond_cy - 10, 8, 20))
+    pygame.draw.rect(screen, (105, 50, 10), (pond_cx - 53, pond_cy - 8, 3, 16))
+    # Bench Right
+    pygame.draw.rect(screen, (139, 69, 19), (pond_cx + 42, pond_cy - 10, 8, 20))
+    pygame.draw.rect(screen, (105, 50, 10), (pond_cx + 50, pond_cy - 8, 3, 16))
+    
+    # Draw Trees
+    for tx, ty in TREES:
+        # Tree shadow
+        pygame.draw.circle(screen, (25, 100, 25), (tx+3, ty+3), 18)
+        # Tree canopy
+        pygame.draw.circle(screen, (34, 110, 34), (tx, ty), 18)
+        pygame.draw.circle(screen, (40, 130, 40), (tx-4, ty-4), 12)
+
+    for b in BUILDINGS:
+        x, y, w, h, color = b[:5]
+        detail = b[5] if len(b) > 5 else None
+        
+        # Base building shadow/outline
+        pygame.draw.rect(screen, (50, 50, 50), (x+5, y+5, w, h))
+        # Base building
+        pygame.draw.rect(screen, color, (x, y, w, h))
+        # Roof border
+        pygame.draw.rect(screen, (70, 70, 70), (x, y, w, h), 3)
+        # Inner roof detail (adds depth)
+        inner_color = (max(color[0]-20, 0), max(color[1]-20, 0), max(color[2]-20, 0))
+        pygame.draw.rect(screen, inner_color, (x+8, y+8, w-16, h-16))
+        pygame.draw.rect(screen, (80, 80, 80), (x+8, y+8, w-16, h-16), 2)
+        # Decorations
+        if detail == 'helipad':
+            cx, cy = x + w//2, y + h//2
+            pygame.draw.circle(screen, (100, 100, 100), (cx, cy), 15)
+            pygame.draw.circle(screen, (255, 255, 255), (cx, cy), 15, 2)
+            pygame.draw.line(screen, (255, 255, 255), (cx-5, cy-8), (cx-5, cy+8), 3)
+            pygame.draw.line(screen, (255, 255, 255), (cx+5, cy-8), (cx+5, cy+8), 3)
+            pygame.draw.line(screen, (255, 255, 255), (cx-5, cy), (cx+5, cy), 3)
+        elif detail == 'hospital':
+            cx, cy = x + w//2, y + h//2
+            pygame.draw.rect(screen, (255, 255, 255), (cx-12, cy-12, 24, 24))
+            pygame.draw.rect(screen, (220, 50, 50), (cx-3, cy-9, 6, 18))
+            pygame.draw.rect(screen, (220, 50, 50), (cx-9, cy-3, 18, 6))
+        elif detail == 'ac_units':
+            # Cluster of AC units
+            draw_ac(screen, x+20, y+20, 14, t)
+            draw_ac(screen, x+40, y+20, 14, t)
+            draw_ac(screen, x+20, y+40, 14, t)
+            draw_ac(screen, x+40, y+40, 14, t)
+        elif detail == 'solar_panels':
+            # Detailed solar panel grid
+            for px in range(x+20, x+w-30, 22):
+                for py in range(y+20, y+h-30, 28):
+                    pygame.draw.rect(screen, (20, 40, 80), (px, py, 18, 24)) # Dark blue base
+                    pygame.draw.rect(screen, (150, 150, 150), (px, py, 18, 24), 2) # Silver frame
+                    pygame.draw.line(screen, (80, 120, 180), (px+3, py+2), (px+15, py+2), 1) # Glare lines
+                    pygame.draw.line(screen, (80, 120, 180), (px+3, py+8), (px+15, py+8), 1)
+                    pygame.draw.line(screen, (80, 120, 180), (px+3, py+14), (px+15, py+14), 1)
+                    pygame.draw.line(screen, (80, 120, 180), (px+3, py+20), (px+15, py+20), 1)
+        elif detail == 'skylight':
+            pygame.draw.rect(screen, (170, 200, 220), (x+w//2-15, y+20, 30, h-40))
+            pygame.draw.rect(screen, (220, 240, 255), (x+w//2-12, y+23, 24, h-46))
+            for ly in range(y+30, y+h-20, 15):
+                pygame.draw.line(screen, (150, 180, 200), (x+w//2-15, ly), (x+w//2+14, ly), 2)
+
+
+
+def draw_intersection(screen, t=0.0):
     # Fill background with grass
     screen.fill(GRASS_COLOR)
     
     center_x, center_y = WIDTH // 2, HEIGHT // 2
+    
+    # Draw sidewalks
+    SIDEWALK_COLOR = (160, 160, 160)
+    SIDEWALK_LINE = (130, 130, 130)
+    SIDEWALK_WIDTH = ROAD_WIDTH + 40
+    
+    # Vertical sidewalk base
+    pygame.draw.rect(screen, SIDEWALK_COLOR, (center_x - SIDEWALK_WIDTH // 2, 0, SIDEWALK_WIDTH, HEIGHT))
+    # Horizontal sidewalk base
+    pygame.draw.rect(screen, SIDEWALK_COLOR, (0, center_y - SIDEWALK_WIDTH // 2, WIDTH, SIDEWALK_WIDTH))
+    
+    # Sidewalk paving lines (grid pattern)
+    for i in range(0, HEIGHT, 20):
+        # Vertical sidewalk lines
+        pygame.draw.line(screen, SIDEWALK_LINE, (center_x - SIDEWALK_WIDTH // 2, i), (center_x - ROAD_WIDTH // 2, i))
+        pygame.draw.line(screen, SIDEWALK_LINE, (center_x + ROAD_WIDTH // 2, i), (center_x + SIDEWALK_WIDTH // 2, i))
+    for i in range(0, WIDTH, 20):
+        # Horizontal sidewalk lines
+        pygame.draw.line(screen, SIDEWALK_LINE, (i, center_y - SIDEWALK_WIDTH // 2), (i, center_y - ROAD_WIDTH // 2))
+        pygame.draw.line(screen, SIDEWALK_LINE, (i, center_y + ROAD_WIDTH // 2), (i, center_y + SIDEWALK_WIDTH // 2))
+    
+    # Outer curb lines
+    pygame.draw.line(screen, (120, 120, 120), (center_x - SIDEWALK_WIDTH // 2, 0), (center_x - SIDEWALK_WIDTH // 2, HEIGHT), 2)
+    pygame.draw.line(screen, (120, 120, 120), (center_x + SIDEWALK_WIDTH // 2, 0), (center_x + SIDEWALK_WIDTH // 2, HEIGHT), 2)
+    pygame.draw.line(screen, (120, 120, 120), (0, center_y - SIDEWALK_WIDTH // 2), (WIDTH, center_y - SIDEWALK_WIDTH // 2), 2)
+    pygame.draw.line(screen, (120, 120, 120), (0, center_y + SIDEWALK_WIDTH // 2), (WIDTH, center_y + SIDEWALK_WIDTH // 2), 2)
+
+    # Draw buildings and parks
+    draw_buildings_and_parks(screen, t)
     
     # Draw roads
     # Vertical road
@@ -412,7 +568,7 @@ def main():
                 cars[direction] = [car for car in cars[direction] if car.state[0] < 850.0]
 
         # Draw environment
-        draw_intersection(screen)
+        draw_intersection(screen, total_sim_time)
         draw_traffic_lights(screen, traffic_lights, tl_box_img)
         
         # Draw cars
