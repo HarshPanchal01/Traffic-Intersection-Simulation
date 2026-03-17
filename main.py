@@ -1,7 +1,7 @@
 import pygame
 import sys
 import datetime
-import cv2
+import imageio
 import numpy as np
 import os
 from simulation.vehicle import Vehicle
@@ -424,8 +424,7 @@ def main():
     is_recording = True
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     video_filename = f"simulation_{timestamp}.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(video_filename, fourcc, 60.0, (WIDTH, HEIGHT))
+    video_writer = imageio.get_writer(video_filename, fps=60.0)
     print(f"Recording started: {video_filename}")
     
     collision_count = 0
@@ -588,14 +587,13 @@ def main():
         
         # Save frame to video if recording
         if is_recording and video_writer:
-            # Convert Pygame surface to OpenCV image (RGB -> BGR)
+            # Convert Pygame surface to imageio image format
             frame_data = pygame.surfarray.array3d(screen)
             frame_data = np.transpose(frame_data, (1, 0, 2))
-            frame_data = cv2.cvtColor(frame_data, cv2.COLOR_RGB2BGR)
-            video_writer.write(frame_data)
+            video_writer.append_data(frame_data)
 
     if video_writer:
-        video_writer.release()
+        video_writer.close()
         print(f"Video saved: {video_filename}")
         
     pygame.quit()
