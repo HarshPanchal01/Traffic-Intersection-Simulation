@@ -18,7 +18,7 @@ A hybrid continuous/discrete 2D simulation of a 4-way traffic intersection built
 - `pygame-ce`
 - `numpy`
 - `scipy`
-- `opencv-python`
+- `imageio[ffmpeg]`
 - `matplotlib`
 
 ## Usage
