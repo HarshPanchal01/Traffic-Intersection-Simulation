@@ -101,32 +101,68 @@ class Trajectory:
             arc_end_y = cy + vx * sin_t + vy * cos_t
             return arc_end_x + new_dir[0] * straight_2_dist, arc_end_y + new_dir[1] * straight_2_dist, end_ang, new_right[0], new_right[1]
 
-class Car:
-    _BASE_IMAGE = None
-    _DETAILS_IMAGE = None
+class Vehicle:
+    _SPRITES = {}
 
     @classmethod
     def load_sprites(cls):
-        if cls._BASE_IMAGE is None:
-            cls._BASE_IMAGE = pygame.image.load('assets/car_base.png').convert_alpha()
-            cls._DETAILS_IMAGE = pygame.image.load('assets/car_details.png').convert_alpha()
+        if not cls._SPRITES:
+            for v_type in ['car', 'small_car', 'bus', 'truck']:
+                asset_name = 'car' if v_type in ['car', 'small_car'] else v_type
+                
+                base_img = pygame.image.load(f'assets/{asset_name}_base.png').convert_alpha()
+                details_img = pygame.image.load(f'assets/{asset_name}_details.png').convert_alpha()
+                
+                if v_type == 'small_car':
+                    # Scale down the car sprites for small vehicle
+                    new_size = (int(base_img.get_width() * 0.8), int(base_img.get_height() * 0.8))
+                    base_img = pygame.transform.smoothscale(base_img, new_size)
+                    details_img = pygame.transform.smoothscale(details_img, new_size)
 
-    def __init__(self, direction, turn, lane):
-        Car.load_sprites()
+                cls._SPRITES[v_type] = {
+                    'base': base_img,
+                    'details': details_img
+                }
+
+    def __init__(self, direction, turn, lane, vehicle_type='car'):
+        Vehicle.load_sprites()
         self.direction = direction # 'N', 'S', 'E', 'W'
         self.turn = turn # 'straight', 'left', 'right'
         self.lane = lane # 'left', 'right'
+        self.vehicle_type = vehicle_type
         self.lateral_offset = -25.0 if lane == 'left' else 25.0
 
         self.trajectory = Trajectory(direction, turn)
 
         # State: [position_1d, velocity_1d]
-        self.state = [-50.0, 15.0] # start off-screen, initial speed 15
+        self.state = [-80.0, 15.0] # start off-screen, initial speed 15
 
-        # Driver behaviors
-        self.max_speed = np.random.uniform(25.0, 50.0)
-        self.acceleration = np.random.uniform(10.0, 20.0)
-        self.braking = np.random.uniform(20.0, 40.0)
+        # Driver behaviors and dimensions based on vehicle type
+        if vehicle_type == 'car':
+            self.max_speed = np.random.uniform(25.0, 50.0)
+            self.acceleration = np.random.uniform(10.0, 20.0)
+            self.braking = np.random.uniform(20.0, 40.0)
+            self.length = 40
+            self.width = 20
+        elif vehicle_type == 'small_car':
+            self.max_speed = np.random.uniform(30.0, 55.0)
+            self.acceleration = np.random.uniform(12.0, 25.0)
+            self.braking = np.random.uniform(25.0, 45.0)
+            self.length = 32
+            self.width = 16
+        elif vehicle_type == 'bus':
+            self.max_speed = np.random.uniform(20.0, 40.0)
+            self.acceleration = np.random.uniform(5.0, 12.0)
+            self.braking = np.random.uniform(15.0, 30.0)
+            self.length = 80
+            self.width = 24
+        elif vehicle_type == 'truck':
+            self.max_speed = np.random.uniform(18.0, 35.0)
+            self.acceleration = np.random.uniform(4.0, 10.0)
+            self.braking = np.random.uniform(10.0, 25.0)
+            self.length = 100
+            self.width = 24
+
         self.reaction_time = np.random.uniform(0.3, 1.5)
         self.current_reaction_timer = 0.0
         self.has_stopped_for_red = False
@@ -137,8 +173,6 @@ class Car:
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
 
-        self.length = 40
-        self.width = 20
         self.color = (np.random.randint(50, 255), np.random.randint(50, 255), np.random.randint(50, 255))
 
         # Metrics
@@ -151,17 +185,31 @@ class Car:
         self.img_right = self._create_base_image(False, True)
 
     def _create_base_image(self, blink_left, blink_right):
-        img = self._BASE_IMAGE.copy()
+        base = self._SPRITES[self.vehicle_type]['base']
+        details = self._SPRITES[self.vehicle_type]['details']
+        
+        img = base.copy()
         img.fill(self.color, special_flags=pygame.BLEND_MULT)
-        img.blit(self._DETAILS_IMAGE, (0, 0))
+        img.blit(details, (0, 0))
 
         signal_color = (255, 165, 0, 255)
+        # Adjust signal positions based on vehicle length (approximate front and back)
+        w, l = self.width, self.length
+        # The sprites are oriented facing "up" (or "right" usually, let's assume "right" for length along x-axis based on previous code)
+        # Previous signal coordinates: 
+        # blink_left: (2, 0, 4, 4), (2, 36, 5, 4) -> x near 0 and y near 0, x near 0 and y near 36
+        # This implies length is along Y axis? Let's check: length=40, width=20. x is 0..20, y is 0..40.
+        # So it's facing along Y-axis or X-axis? The original had y=36, so length is along Y axis, facing up or down.
+        # blink_left: top-left (2, 0), bottom-left (2, 36).
+        # blink_right: top-right (14, 0), bottom-right (13, 36). width was 20.
+        
+        # Let's adjust based on l and w:
         if blink_left:
             pygame.draw.rect(img, signal_color, (2, 0, 4, 4))
-            pygame.draw.rect(img, signal_color, (2, 36, 5, 4))
+            pygame.draw.rect(img, signal_color, (2, l - 4, 5, 4))
         if blink_right:
-            pygame.draw.rect(img, signal_color, (14, 0, 4, 4))
-            pygame.draw.rect(img, signal_color, (13, 36, 5, 4))
+            pygame.draw.rect(img, signal_color, (w - 6, 0, 4, 4))
+            pygame.draw.rect(img, signal_color, (w - 7, l - 4, 5, 4))
 
         return img
 
@@ -169,7 +217,7 @@ class Car:
         x, v = state
         return [v, a]
 
-    def update(self, dt, light_state, distance_to_car_ahead, must_yield_left=False, can_right_on_red=False):
+    def update(self, dt, light_state, distance_to_vehicle_ahead, must_yield_left=False, can_right_on_red=False):
         v = self.state[1]
         dist_to_stop_line = self.trajectory.straight_dist - self.state[0]
         
@@ -214,8 +262,8 @@ class Car:
                     stopping_for_yield = True
 
         stopping_for_car = False
-        if distance_to_car_ahead is not None:
-            if distance_to_car_ahead <= braking_dist + self.length + 20.0:
+        if distance_to_vehicle_ahead is not None:
+            if distance_to_vehicle_ahead <= braking_dist + 20.0:
                 stopping_for_car = True
 
         need_to_stop = stopping_for_car or stopping_for_light or stopping_for_yield
@@ -224,7 +272,7 @@ class Car:
             a = -self.braking
             if v <= 1.0:
                 if (stopping_for_light and dist_to_stop_line < 35.0) or \
-                   (stopping_for_car and distance_to_car_ahead < self.length + 25.0) or \
+                   (stopping_for_car and distance_to_vehicle_ahead < 25.0) or \
                    (stopping_for_yield and dist_to_yield_point < 20.0):
                     a = 0.0
                     self.state[1] = 0.0

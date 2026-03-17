@@ -2,7 +2,7 @@ import numpy as np
 
 class Spawner:
     def __init__(self, rate):
-        # Arrival rate parameter for Poisson distribution (cars per second)
+        # Arrival rate parameter for Poisson distribution (vehicles per second)
         self.rate = rate 
         self.timer = 0.0
         self.time_to_next = self._get_next_time()
@@ -25,6 +25,8 @@ class Spawner:
             # Pick a random turn with weighted probabilities
             turn = np.random.choice(['straight', 'left', 'right'], p=[0.6, 0.2, 0.2])
             lane = 'left' if turn == 'left' else 'right'
-            spawned.append((direction, turn, lane))
+            # Pick a random vehicle type
+            vehicle_type = np.random.choice(['car', 'small_car', 'bus', 'truck'], p=[0.55, 0.20, 0.10, 0.15])
+            spawned.append((direction, turn, lane, vehicle_type))
             self.time_to_next = self._get_next_time()
         return spawned

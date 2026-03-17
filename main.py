@@ -4,7 +4,7 @@ import datetime
 import cv2
 import numpy as np
 import os
-from simulation.car import Car
+from simulation.vehicle import Vehicle
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
 from analytics.metrics import MetricsManager
@@ -286,13 +286,13 @@ def draw_intersection(screen, t=0.0):
     draw_straight_right_arrow(screen, (center_x + arrow_offset, center_y - 75), 90)
 
     # Draw stop lines
-    # North (cars coming from north, stop line on the right side of the road)
+    # North (vehicles coming from north, stop line on the right side of the road)
     pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x, center_y - ROAD_WIDTH // 2), 4)
-    # South (cars coming from south)
+    # South (vehicles coming from south)
     pygame.draw.line(screen, WHITE, (center_x, center_y + ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y + ROAD_WIDTH // 2), 4)
-    # West (cars coming from west)
+    # West (vehicles coming from west)
     pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y), (center_x - ROAD_WIDTH // 2, center_y + ROAD_WIDTH // 2), 4)
-    # East (cars coming from east)
+    # East (vehicles coming from east)
     pygame.draw.line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y), 4)
 
 def draw_traffic_lights(screen, traffic_lights, tl_box_img):
@@ -371,7 +371,7 @@ def draw_legend(screen):
         text = font.render(line, True, WHITE)
         screen.blit(text, (20, 20 + i * 22))
 
-def draw_stats(screen, active_cars, collision_count, sim_time, metrics):
+def draw_stats(screen, active_vehicles, collision_count, sim_time, metrics):
     font = pygame.font.SysFont("courier new", 16)
 
     # Format time as MM:SS.ss
@@ -382,24 +382,23 @@ def draw_stats(screen, active_cars, collision_count, sim_time, metrics):
     lines = [
         "simulation details:",
         f"time: {time_str}",
-        f"active cars: {active_cars}",
+        f"active vehicles: {active_vehicles}",
         f"total collisions: {collision_count}",
         f"avg wait: {metrics.get_avg_wait_time():.1f}s",
-        f"throughput: {metrics.get_throughput(sim_time):.1f} cars/min",
+        f"throughput: {metrics.get_throughput(sim_time):.1f} vehicles/min",
         f"max queue: {metrics.max_queue_length}"
     ]
     
     # Semi-transparent background
-    stats_width = 280
+    stats_width = 330
     stats_height = len(lines) * 22 + 10
     overlay = pygame.Surface((stats_width, stats_height), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 150))
     screen.blit(overlay, (WIDTH - stats_width - 10, 10))
-    
+
     for i, line in enumerate(lines):
         text = font.render(line, True, WHITE)
         screen.blit(text, (WIDTH - stats_width, 20 + i * 22))
-
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -412,9 +411,9 @@ def main():
     tl_box_img = pygame.image.load('assets/tl_box.png').convert_alpha()
 
     traffic_lights = TrafficLightSystem()
-    spawner = Spawner(rate=0.5) # 0.5 cars per second
+    spawner = Spawner(rate=0.5) # 0.5 vehicles per second
     
-    cars = {'N': [], 'S': [], 'E': [], 'W': []}
+    vehicles = {'N': [], 'S': [], 'E': [], 'W': []}
     
     running = True
     is_paused = False
@@ -459,89 +458,90 @@ def main():
             traffic_lights.update(dt)
             
             # Spawner logic
-            new_cars = spawner.update(dt)
-            for direction, turn, lane in new_cars:
-                lane_cars = [c for c in cars[direction] if c.lane == lane]
-                if not lane_cars or lane_cars[-1].state[0] > 10.0:
-                    cars[direction].append(Car(direction, turn, lane))
+            new_vehicles = spawner.update(dt)
+            for direction, turn, lane, vehicle_type in new_vehicles:
+                lane_vehicles = [c for c in vehicles[direction] if c.lane == lane]
+                if not lane_vehicles or lane_vehicles[-1].state[0] > 10.0:
+                    vehicles[direction].append(Vehicle(direction, turn, lane, vehicle_type))
 
-            # Update cars
-            all_cars = []
+            # Update vehicles
+            all_vehicles = []
             for direction in ['N', 'S', 'E', 'W']:
                 if direction in ['N', 'S']:
                     light_state = traffic_lights.ns_state
                 else:
                     light_state = traffic_lights.ew_state
                     
-                for i, car in enumerate(cars[direction]):
-                    # Use 2D distance to car ahead IN THE SAME LANE for better following in curves
+                for i, vehicle in enumerate(vehicles[direction]):
+                    # Use 2D distance to vehicle ahead IN THE SAME LANE for better following in curves
                     dist_ahead = None
-                    lane_cars_ahead = [c for c in cars[direction][:i] if c.lane == car.lane]
-                    if lane_cars_ahead:
-                        car_ahead = lane_cars_ahead[-1]
-                        pos1 = car.get_world_pos()
-                        pos2 = car_ahead.get_world_pos()
-                        dist_ahead = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+                    lane_vehicles_ahead = [c for c in vehicles[direction][:i] if c.lane == vehicle.lane]
+                    if lane_vehicles_ahead:
+                        vehicle_ahead = lane_vehicles_ahead[-1]
+                        pos1 = vehicle.get_world_pos()
+                        pos2 = vehicle_ahead.get_world_pos()
+                        center_dist = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+                        dist_ahead = center_dist - (vehicle.length / 2) - (vehicle_ahead.length / 2)
                         
                     must_yield_left = False
                     can_right_on_red = False
                     
-                    if car.turn == 'left':
+                    if vehicle.turn == 'left':
                         opposing_dir = {'N':'S', 'S':'N', 'E':'W', 'W':'E'}[direction]
-                        for opp_car in cars[opposing_dir]:
-                            if opp_car.turn in ['straight', 'right']:
-                                # If light is yellow or red, opposing cars before the stop line will stop.
-                                if light_state in ['YELLOW', 'RED'] and opp_car.state[0] < 320:
+                        for opp_vehicle in vehicles[opposing_dir]:
+                            if opp_vehicle.turn in ['straight', 'right']:
+                                # If light is yellow or red, opposing vehicles before the stop line will stop.
+                                if light_state in ['YELLOW', 'RED'] and opp_vehicle.state[0] < 320:
                                     continue
                                     
-                                # If opposing car is in intersection and before the midpoint (center)
-                                if 320 <= opp_car.state[0] < 400:
+                                # If opposing vehicle is in intersection and before the midpoint (center)
+                                if 320 <= opp_vehicle.state[0] < 400:
                                     must_yield_left = True
                                     break
-                                # If opposing car is approaching and moving fast enough to be a threat
-                                elif opp_car.state[0] < 320:
-                                    # Calculate time for opposing car to reach intersection
-                                    v_opp = opp_car.state[1]
+                                # If opposing vehicle is approaching and moving fast enough to be a threat
+                                elif opp_vehicle.state[0] < 320:
+                                    # Calculate time for opposing vehicle to reach intersection
+                                    v_opp = opp_vehicle.state[1]
                                     if v_opp > 0.1:
-                                        time_to_intersect = (320 - opp_car.state[0]) / v_opp
+                                        time_to_intersect = (320 - opp_vehicle.state[0]) / v_opp
                                         # If it will reach the intersection in the next 3.5 seconds, yield
                                         if time_to_intersect < 3.5:
                                             must_yield_left = True
                                             break
                                     
-                    if car.turn == 'right' and light_state == 'RED':
+                    if vehicle.turn == 'right' and light_state == 'RED':
                         cross_left_dir = {'N':'E', 'S':'W', 'E':'S', 'W':'N'}[direction]
                         opposing_dir = {'N':'S', 'S':'N', 'E':'W', 'W':'E'}[direction]
                         
                         is_safe = True
-                        for cross_car in cars[cross_left_dir]:
-                            if cross_car.turn in ['straight', 'left']:
-                                if 320 < cross_car.state[0] < 480:
+                        for cross_vehicle in vehicles[cross_left_dir]:
+                            if cross_vehicle.turn in ['straight', 'left']:
+                                if 320 < cross_vehicle.state[0] < 480:
                                     is_safe = False
                                     break
-                                elif 150 < cross_car.state[0] <= 320 and cross_car.state[1] > 2.0:
+                                elif 150 < cross_vehicle.state[0] <= 320 and cross_vehicle.state[1] > 2.0:
                                     is_safe = False
                                     break
                         if is_safe:
-                            for opp_car in cars[opposing_dir]:
-                                if opp_car.turn == 'left':
-                                    if 320 < opp_car.state[0] < 450:
+                            for opp_vehicle in vehicles[opposing_dir]:
+                                if opp_vehicle.turn == 'left':
+                                    if 320 < opp_vehicle.state[0] < 450:
                                         is_safe = False
                                         break
-                                    elif 200 < opp_car.state[0] <= 320 and opp_car.state[1] > 2.0:
+                                    elif 200 < opp_vehicle.state[0] <= 320 and opp_vehicle.state[1] > 2.0:
                                         is_safe = False
                                         break
                         can_right_on_red = is_safe
                         
-                    car.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red)
-                    all_cars.append(car)
+                    vehicle.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red)
+                    all_vehicles.append(vehicle)
 
             # Collision detection
             import math
-            for i in range(len(all_cars)):
-                for j in range(i + 1, len(all_cars)):
-                    car1 = all_cars[i]
-                    car2 = all_cars[j]
+            for i in range(len(all_vehicles)):
+                for j in range(i + 1, len(all_vehicles)):
+                    car1 = all_vehicles[i]
+                    car2 = all_vehicles[j]
                     
                     pos1 = car1.get_world_pos()
                     pos2 = car2.get_world_pos()
@@ -556,28 +556,28 @@ def main():
                             print(f"[{total_sim_time:06.2f}s] Collision detected!")
 
             # Update Metrics
-            metrics.update_max_queue(cars)
+            metrics.update_max_queue(vehicles)
 
-            # Remove cars that have left the screen
+            # Remove vehicles that have left the screen
             for direction in ['N', 'S', 'E', 'W']:
-                for car in cars[direction]:
-                    if car.state[0] >= 850.0:
-                        collided_pairs = {p for p in collided_pairs if id(car) not in p}
-                        # Record metrics for finished car
-                        metrics.add_completed_car(car)
-                cars[direction] = [car for car in cars[direction] if car.state[0] < 850.0]
+                for vehicle in vehicles[direction]:
+                    if vehicle.state[0] >= 850.0:
+                        collided_pairs = {p for p in collided_pairs if id(vehicle) not in p}
+                        # Record metrics for finished vehicle
+                        metrics.add_completed_vehicle(vehicle)
+                vehicles[direction] = [vehicle for vehicle in vehicles[direction] if vehicle.state[0] < 850.0]
 
         # Draw environment
         draw_intersection(screen, total_sim_time)
         draw_traffic_lights(screen, traffic_lights, tl_box_img)
         
-        # Draw cars
+        # Draw vehicles
         active_count = 0
         for direction in ['N', 'S', 'E', 'W']:
-            for car in cars[direction]:
-                car.draw(screen)
-                # Only count cars whose centers are actually on screen
-                if 0 <= car.state[0] <= 800:
+            for vehicle in vehicles[direction]:
+                vehicle.draw(screen)
+                # Only count vehicles whose centers are actually on screen
+                if 0 <= vehicle.state[0] <= 800:
                     active_count += 1
         
         # Draw legends and stats
