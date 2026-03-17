@@ -193,23 +193,15 @@ class Vehicle:
         img.blit(details, (0, 0))
 
         signal_color = (255, 165, 0, 255)
-        # Adjust signal positions based on vehicle length (approximate front and back)
-        w, l = self.width, self.length
-        # The sprites are oriented facing "up" (or "right" usually, let's assume "right" for length along x-axis based on previous code)
-        # Previous signal coordinates: 
-        # blink_left: (2, 0, 4, 4), (2, 36, 5, 4) -> x near 0 and y near 0, x near 0 and y near 36
-        # This implies length is along Y axis? Let's check: length=40, width=20. x is 0..20, y is 0..40.
-        # So it's facing along Y-axis or X-axis? The original had y=36, so length is along Y axis, facing up or down.
-        # blink_left: top-left (2, 0), bottom-left (2, 36).
-        # blink_right: top-right (14, 0), bottom-right (13, 36). width was 20.
+        # Use actual sprite dimensions for blinker positions
+        img_w, img_h = img.get_size()
         
-        # Let's adjust based on l and w:
         if blink_left:
-            pygame.draw.rect(img, signal_color, (2, 0, 4, 4))
-            pygame.draw.rect(img, signal_color, (2, l - 4, 5, 4))
+            pygame.draw.rect(img, signal_color, (2, 0, 4, 4)) # Front left
+            pygame.draw.rect(img, signal_color, (2, img_h - 4, 4, 4)) # Back left
         if blink_right:
-            pygame.draw.rect(img, signal_color, (w - 6, 0, 4, 4))
-            pygame.draw.rect(img, signal_color, (w - 7, l - 4, 5, 4))
+            pygame.draw.rect(img, signal_color, (img_w - 6, 0, 4, 4)) # Front right
+            pygame.draw.rect(img, signal_color, (img_w - 6, img_h - 4, 4, 4)) # Back right
 
         return img
 
@@ -219,7 +211,7 @@ class Vehicle:
 
     def update(self, dt, light_state, distance_to_vehicle_ahead, must_yield_left=False, can_right_on_red=False):
         v = self.state[1]
-        dist_to_stop_line = self.trajectory.straight_dist - self.state[0]
+        dist_to_stop_line = (self.trajectory.straight_dist - 30.0) - self.state[0]
         
         if light_state == 'GREEN':
             self.has_stopped_for_red = False
@@ -289,21 +281,24 @@ class Vehicle:
 
                 clearing_intersection = False
                 # If past or very close to the stop line and light is YELLOW/RED, speed up to clear
-                if light_state in ['YELLOW', 'RED'] and self.state[0] > self.trajectory.straight_dist - 15:
+                if light_state in ['YELLOW', 'RED'] and self.state[0] > self.trajectory.straight_dist - 45:
                     clearing_intersection = True
 
                 # Reduce speed for turns
                 if self.turn != 'straight' and self.state[0] > self.trajectory.straight_dist - 50 and self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
                     if clearing_intersection:
-                        target_speed = self.max_speed * 1.2 # Go faster than normal to clear intersection
+                        target_speed = self.max_speed * 1.5 # Go faster than normal to clear intersection
                     else:
-                        target_speed = self.max_speed * 0.5
+                        if self.turn == 'right':
+                            target_speed = self.max_speed * 0.85
+                        else:
+                            target_speed = self.max_speed * 0.6
                 elif clearing_intersection:
-                    target_speed = self.max_speed * 1.2
+                    target_speed = self.max_speed * 2.0
 
                 if v < target_speed:
                     if clearing_intersection:
-                        a = self.acceleration * 3.0 # punch it!
+                        a = self.acceleration * 4.0 # punch it!
                     else:
                         a = self.acceleration
                 elif v > target_speed + 2.0:
@@ -342,7 +337,8 @@ class Vehicle:
 
         blink_on = False
         if self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
-            blink_on = (int(self.t * 2) % 2 == 0)
+            # Sync blinkers globally across all vehicles
+            blink_on = ((pygame.time.get_ticks() // 500) % 2 == 0)
 
         img_to_rotate = self.img_off
 

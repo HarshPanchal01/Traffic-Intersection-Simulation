@@ -193,16 +193,16 @@ def draw_intersection(screen, t=0.0):
     
     # Draw road markings
     # Vertical double yellow line
-    pygame.draw.line(screen, YELLOW_LINE, (center_x - 2, 0), (center_x - 2, center_y - ROAD_WIDTH // 2), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (center_x + 2, 0), (center_x + 2, center_y - ROAD_WIDTH // 2), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (center_x - 2, center_y + ROAD_WIDTH // 2), (center_x - 2, HEIGHT), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (center_x + 2, center_y + ROAD_WIDTH // 2), (center_x + 2, HEIGHT), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x - 2, 0), (center_x - 2, center_y - (ROAD_WIDTH // 2 + 30)), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x + 2, 0), (center_x + 2, center_y - (ROAD_WIDTH // 2 + 30)), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x - 2, center_y + (ROAD_WIDTH // 2 + 30)), (center_x - 2, HEIGHT), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x + 2, center_y + (ROAD_WIDTH // 2 + 30)), (center_x + 2, HEIGHT), 2)
     
     # Horizontal double yellow line
-    pygame.draw.line(screen, YELLOW_LINE, (0, center_y - 2), (center_x - ROAD_WIDTH // 2, center_y - 2), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (0, center_y + 2), (center_x - ROAD_WIDTH // 2, center_y + 2), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (center_x + ROAD_WIDTH // 2, center_y - 2), (WIDTH, center_y - 2), 2)
-    pygame.draw.line(screen, YELLOW_LINE, (center_x + ROAD_WIDTH // 2, center_y + 2), (WIDTH, center_y + 2), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (0, center_y - 2), (center_x - (ROAD_WIDTH // 2 + 30), center_y - 2), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (0, center_y + 2), (center_x - (ROAD_WIDTH // 2 + 30), center_y + 2), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x + (ROAD_WIDTH // 2 + 30), center_y - 2), (WIDTH, center_y - 2), 2)
+    pygame.draw.line(screen, YELLOW_LINE, (center_x + (ROAD_WIDTH // 2 + 30), center_y + 2), (WIDTH, center_y + 2), 2)
     
     # Draw lane dividers (dashed white lines)
     def draw_dashed_line(surface, color, start_pos, end_pos, width=1, dash_length=10):
@@ -217,15 +217,15 @@ def draw_intersection(screen, t=0.0):
             for i in range(0, len(xcoords) - 1, 2):
                 pygame.draw.line(surface, color, (xcoords[i], y1), (xcoords[i+1], y1), width)
 
-    draw_dashed_line(screen, WHITE, (center_x - 50, 0), (center_x - 50, center_y - ROAD_WIDTH // 2), 2)
-    draw_dashed_line(screen, WHITE, (center_x + 50, 0), (center_x + 50, center_y - ROAD_WIDTH // 2), 2)
-    draw_dashed_line(screen, WHITE, (center_x - 50, center_y + ROAD_WIDTH // 2), (center_x - 50, HEIGHT), 2)
-    draw_dashed_line(screen, WHITE, (center_x + 50, center_y + ROAD_WIDTH // 2), (center_x + 50, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 50, 0), (center_x - 50, center_y - (ROAD_WIDTH // 2 + 30)), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 50, 0), (center_x + 50, center_y - (ROAD_WIDTH // 2 + 30)), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 50, center_y + (ROAD_WIDTH // 2 + 30)), (center_x - 50, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 50, center_y + (ROAD_WIDTH // 2 + 30)), (center_x + 50, HEIGHT), 2)
     
-    draw_dashed_line(screen, WHITE, (0, center_y - 50), (center_x - ROAD_WIDTH // 2, center_y - 50), 2)
-    draw_dashed_line(screen, WHITE, (0, center_y + 50), (center_x - ROAD_WIDTH // 2, center_y + 50), 2)
-    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - 50), (WIDTH, center_y - 50), 2)
-    draw_dashed_line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y + 50), (WIDTH, center_y + 50), 2)
+    draw_dashed_line(screen, WHITE, (0, center_y - 50), (center_x - (ROAD_WIDTH // 2 + 30), center_y - 50), 2)
+    draw_dashed_line(screen, WHITE, (0, center_y + 50), (center_x - (ROAD_WIDTH // 2 + 30), center_y + 50), 2)
+    draw_dashed_line(screen, WHITE, (center_x + (ROAD_WIDTH // 2 + 30), center_y - 50), (WIDTH, center_y - 50), 2)
+    draw_dashed_line(screen, WHITE, (center_x + (ROAD_WIDTH // 2 + 30), center_y + 50), (WIDTH, center_y + 50), 2)
     
     # Draw left turn arrows in the left lanes
     def draw_left_arrow(surface, pos, angle):
@@ -267,7 +267,7 @@ def draw_intersection(screen, t=0.0):
         rect = rotated_arrow.get_rect(center=pos)
         surface.blit(rotated_arrow, rect)
 
-    arrow_offset = ROAD_WIDTH // 2 + 50
+    arrow_offset = ROAD_WIDTH // 2 + 80
 
     # Southbound (North incoming) lanes
     draw_left_arrow(screen, (center_x - 25, center_y - arrow_offset), 180)
@@ -287,13 +287,42 @@ def draw_intersection(screen, t=0.0):
 
     # Draw stop lines
     # North (vehicles coming from north, stop line on the right side of the road)
-    pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x, center_y - ROAD_WIDTH // 2), 4)
+    pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y - (ROAD_WIDTH // 2 + 30)), (center_x, center_y - (ROAD_WIDTH // 2 + 30)), 4)
     # South (vehicles coming from south)
-    pygame.draw.line(screen, WHITE, (center_x, center_y + ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y + ROAD_WIDTH // 2), 4)
+    pygame.draw.line(screen, WHITE, (center_x, center_y + (ROAD_WIDTH // 2 + 30)), (center_x + ROAD_WIDTH // 2, center_y + (ROAD_WIDTH // 2 + 30)), 4)
     # West (vehicles coming from west)
-    pygame.draw.line(screen, WHITE, (center_x - ROAD_WIDTH // 2, center_y), (center_x - ROAD_WIDTH // 2, center_y + ROAD_WIDTH // 2), 4)
+    pygame.draw.line(screen, WHITE, (center_x - (ROAD_WIDTH // 2 + 30), center_y), (center_x - (ROAD_WIDTH // 2 + 30), center_y + ROAD_WIDTH // 2), 4)
     # East (vehicles coming from east)
-    pygame.draw.line(screen, WHITE, (center_x + ROAD_WIDTH // 2, center_y - ROAD_WIDTH // 2), (center_x + ROAD_WIDTH // 2, center_y), 4)
+    pygame.draw.line(screen, WHITE, (center_x + (ROAD_WIDTH // 2 + 30), center_y - ROAD_WIDTH // 2), (center_x + (ROAD_WIDTH // 2 + 30), center_y), 4)
+
+    # Draw crosswalks (zebra lines) in the 30-pixel free space
+    def draw_crosswalk_y(screen, y_pos, x_center, width):
+        stripe_w = 8
+        stripe_h = 24
+        spacing = 16
+        start_x = x_center - width // 2 + spacing // 2
+        for x in range(start_x, x_center + width // 2, spacing):
+            pygame.draw.rect(screen, WHITE, (x, y_pos - stripe_h // 2, stripe_w, stripe_h))
+
+    def draw_crosswalk_x(screen, x_pos, y_center, height):
+        stripe_w = 24
+        stripe_h = 8
+        spacing = 16
+        start_y = y_center - height // 2 + spacing // 2
+        for y in range(start_y, y_center + height // 2, spacing):
+            pygame.draw.rect(screen, WHITE, (x_pos - stripe_w // 2, y, stripe_w, stripe_h))
+
+    # Center of the 30-pixel band
+    cw_offset = ROAD_WIDTH // 2 + 15
+
+    # North crosswalk
+    draw_crosswalk_y(screen, center_y - cw_offset, center_x, ROAD_WIDTH)
+    # South crosswalk
+    draw_crosswalk_y(screen, center_y + cw_offset, center_x, ROAD_WIDTH)
+    # West crosswalk
+    draw_crosswalk_x(screen, center_x - cw_offset, center_y, ROAD_WIDTH)
+    # East crosswalk
+    draw_crosswalk_x(screen, center_x + cw_offset, center_y, ROAD_WIDTH)
 
 def draw_traffic_lights(screen, traffic_lights, tl_box_img):
     center_x, center_y = WIDTH // 2, HEIGHT // 2
@@ -334,8 +363,8 @@ def draw_traffic_lights(screen, traffic_lights, tl_box_img):
         pygame.draw.circle(surface, color, light_pos, radius)
     
     # Position them near the stop lines on the yellow line separator
-    offset_y = ROAD_WIDTH // 2 + 12
-    offset_x = ROAD_WIDTH // 2 + 12
+    offset_y = (ROAD_WIDTH // 2 + 30) + 12
+    offset_x = (ROAD_WIDTH // 2 + 30) + 12
     
     # North approaching (NS light) - Stop line is at top, so light is at top, facing North (0 degrees)
     draw_light(screen, tl_box_img, ns_color, (center_x, center_y - offset_y), 0)
