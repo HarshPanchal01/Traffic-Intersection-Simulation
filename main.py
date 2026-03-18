@@ -489,7 +489,7 @@ def main():
             new_vehicles = spawner.update(dt)
             for direction, turn, lane, vehicle_type in new_vehicles:
                 lane_vehicles = [c for c in vehicles[direction] if c.lane == lane]
-                if not lane_vehicles or lane_vehicles[-1].state[0] > 10.0:
+                if not lane_vehicles or lane_vehicles[-1].state[0] > 50.0:
                     vehicles[direction].append(Vehicle(direction, turn, lane, vehicle_type))
 
             # Update vehicles
@@ -501,15 +501,36 @@ def main():
                     light_state = traffic_lights.ew_state
                     
                 for i, vehicle in enumerate(vehicles[direction]):
-                    # Use 2D distance to vehicle ahead IN THE SAME LANE for better following in curves
-                    dist_ahead = None
+                    # Find the closest vehicle ahead, including those from other directions that merged
+                    min_dist_ahead = float('inf')
+                    
                     lane_vehicles_ahead = [c for c in vehicles[direction][:i] if c.lane == vehicle.lane]
                     if lane_vehicles_ahead:
                         vehicle_ahead = lane_vehicles_ahead[-1]
-                        pos1 = vehicle.get_world_pos()
-                        pos2 = vehicle_ahead.get_world_pos()
-                        center_dist = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
-                        dist_ahead = center_dist - (vehicle.length / 2) - (vehicle_ahead.length / 2)
+                        d = vehicle_ahead.state[0] - vehicle.state[0] - (vehicle.length / 2) - (vehicle_ahead.length / 2)
+                        if d > 0 and d < min_dist_ahead:
+                            min_dist_ahead = d
+
+                    pos1 = vehicle.get_world_pos()
+                    _, _, _, rx, ry = vehicle.trajectory.get_position_and_angle(vehicle.state[0])
+                    dx_dir, dy_dir = ry, -rx
+                    
+                    for other_dir in ['N', 'S', 'E', 'W']:
+                        if other_dir == direction: continue
+                        for ov in vehicles[other_dir]:
+                            if ov.state[0] > 300: # Has started turning / merged
+                                pos2 = ov.get_world_pos()
+                                dx = pos2[0] - pos1[0]
+                                dy = pos2[1] - pos1[1]
+                                forward_dist = dx * dx_dir + dy * dy_dir
+                                if forward_dist > 0:
+                                    lateral_dist = abs(dx * rx + dy * ry)
+                                    if lateral_dist < 15.0:
+                                        d = forward_dist - (vehicle.length / 2) - (ov.length / 2)
+                                        if d > 0 and d < min_dist_ahead:
+                                            min_dist_ahead = d
+                                            
+                    dist_ahead = min_dist_ahead if min_dist_ahead != float('inf') else None
                         
                     must_yield_left = False
                     can_right_on_red = False
@@ -519,21 +540,21 @@ def main():
                         for opp_vehicle in vehicles[opposing_dir]:
                             if opp_vehicle.turn in ['straight', 'right']:
                                 # If light is yellow or red, opposing vehicles before the stop line will stop.
-                                if light_state in ['YELLOW', 'RED'] and opp_vehicle.state[0] < 320:
+                                if light_state in ['YELLOW', 'RED'] and opp_vehicle.state[0] < 270:
                                     continue
                                     
                                 # If opposing vehicle is in intersection and before the midpoint (center)
-                                if 320 <= opp_vehicle.state[0] < 400:
+                                if 270 <= opp_vehicle.state[0] < 450:
                                     must_yield_left = True
                                     break
                                 # If opposing vehicle is approaching and moving fast enough to be a threat
-                                elif opp_vehicle.state[0] < 320:
+                                elif opp_vehicle.state[0] < 270:
                                     # Calculate time for opposing vehicle to reach intersection
                                     v_opp = opp_vehicle.state[1]
                                     if v_opp > 0.1:
-                                        time_to_intersect = (320 - opp_vehicle.state[0]) / v_opp
-                                        # If it will reach the intersection in the next 3.5 seconds, yield
-                                        if time_to_intersect < 3.5:
+                                        time_to_intersect = (270 - opp_vehicle.state[0]) / v_opp
+                                        # If it will reach the intersection in the next 5.5 seconds, yield
+                                        if time_to_intersect < 5.5:
                                             must_yield_left = True
                                             break
                                     
@@ -544,24 +565,40 @@ def main():
                         is_safe = True
                         for cross_vehicle in vehicles[cross_left_dir]:
                             if cross_vehicle.turn in ['straight', 'left']:
-                                if 320 < cross_vehicle.state[0] < 480:
+                                if 250 < cross_vehicle.state[0] < 500:
                                     is_safe = False
                                     break
-                                elif 150 < cross_vehicle.state[0] <= 320 and cross_vehicle.state[1] > 2.0:
-                                    is_safe = False
-                                    break
+                                elif cross_vehicle.state[0] <= 250 and cross_vehicle.state[1] > 0.1:
+                                    time_to_intersect = (270 - cross_vehicle.state[0]) / cross_vehicle.state[1]
+                                    if time_to_intersect < 5.0:
+                                        is_safe = False
+                                        break
                         if is_safe:
                             for opp_vehicle in vehicles[opposing_dir]:
                                 if opp_vehicle.turn == 'left':
-                                    if 320 < opp_vehicle.state[0] < 450:
+                                    if 250 < opp_vehicle.state[0] < 500:
                                         is_safe = False
                                         break
-                                    elif 200 < opp_vehicle.state[0] <= 320 and opp_vehicle.state[1] > 2.0:
-                                        is_safe = False
-                                        break
+                                    elif opp_vehicle.state[0] <= 250 and opp_vehicle.state[1] > 0.1:
+                                        time_to_intersect = (270 - opp_vehicle.state[0]) / opp_vehicle.state[1]
+                                        if time_to_intersect < 5.0:
+                                            is_safe = False
+                                            break
                         can_right_on_red = is_safe
                         
-                    vehicle.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red)
+                    cross_traffic_blocking = False
+                    if vehicle.state[0] < 270:
+                        cross_dirs = ['E', 'W'] if direction in ['N', 'S'] else ['N', 'S']
+                        for c_dir in cross_dirs:
+                            for cv in vehicles[c_dir]:
+                                if 300 < cv.state[0] < 500 and cv.state[1] < 15.0:
+                                    # If crossing traffic is in the intersection and moving somewhat slowly, don't enter
+                                    cross_traffic_blocking = True
+                                    break
+                            if cross_traffic_blocking:
+                                break
+                        
+                    vehicle.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red, cross_traffic_blocking)
                     all_vehicles.append(vehicle)
 
             # Collision detection
@@ -581,7 +618,7 @@ def main():
                         if pair_id not in collided_pairs:
                             collision_count += 1
                             collided_pairs.add(pair_id)
-                            print(f"[{total_sim_time:06.2f}s] Collision detected!")
+                            print(f"[{total_sim_time:06.2f}s] Collision detected! {car1.direction}-{car1.turn} (pos:{car1.state[0]:.1f}) vs {car2.direction}-{car2.turn} (pos:{car2.state[0]:.1f})")
 
             # Update Metrics
             metrics.update_max_queue(vehicles)

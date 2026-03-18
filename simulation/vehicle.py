@@ -209,7 +209,7 @@ class Vehicle:
         x, v = state
         return [v, a]
 
-    def update(self, dt, light_state, distance_to_vehicle_ahead, must_yield_left=False, can_right_on_red=False):
+    def update(self, dt, light_state, distance_to_vehicle_ahead, must_yield_left=False, can_right_on_red=False, cross_traffic_blocking=False):
         v = self.state[1]
         dist_to_stop_line = (self.trajectory.straight_dist - 30.0) - self.state[0]
         
@@ -253,9 +253,14 @@ class Vehicle:
                 if dist_to_yield_point <= braking_dist + 15.0:
                     stopping_for_yield = True
 
+        if cross_traffic_blocking and dist_to_stop_line > 0:
+            if dist_to_stop_line <= braking_dist + 30.0:
+                stopping_for_yield = True
+                dist_to_yield_point = dist_to_stop_line
+
         stopping_for_car = False
         if distance_to_vehicle_ahead is not None:
-            if distance_to_vehicle_ahead <= braking_dist + 20.0:
+            if distance_to_vehicle_ahead <= braking_dist + 40.0:
                 stopping_for_car = True
 
         need_to_stop = stopping_for_car or stopping_for_light or stopping_for_yield
@@ -264,7 +269,7 @@ class Vehicle:
             a = -self.braking
             if v <= 1.0:
                 if (stopping_for_light and dist_to_stop_line < 35.0) or \
-                   (stopping_for_car and distance_to_vehicle_ahead < 25.0) or \
+                   (stopping_for_car and distance_to_vehicle_ahead < 35.0) or \
                    (stopping_for_yield and dist_to_yield_point < 20.0):
                     a = 0.0
                     self.state[1] = 0.0
