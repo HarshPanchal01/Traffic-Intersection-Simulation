@@ -31,6 +31,16 @@ def generate_plots(exp1_results, exp2_results):
     plt.savefig('analytics/plots/plt_exp1_throughput.png')
     plt.close()
     
+    # Plot 1c: Max Queue Length vs. Green Light Time
+    plt.figure(figsize=(8, 5))
+    plt.plot(green_times, queues_1, marker='^', color='orange')
+    plt.title('Maximum Queue Length vs. Green Light Duration')
+    plt.xlabel('Green Light Duration (seconds)')
+    plt.ylabel('Max Queue Length (vehicles)')
+    plt.grid(True)
+    plt.savefig('analytics/plots/plt_exp1_queue_length.png')
+    plt.close()
+    
     # --- Experiment 2: Varying Arrival Rate ---
     arrival_rates = [res[0] for res in exp2_results]
     wait_times_2 = [res[1]['avg_wait_time'] for res in exp2_results]
