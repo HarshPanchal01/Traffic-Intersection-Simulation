@@ -18,7 +18,7 @@ def generate_plots(exp1_results, exp2_results):
     plt.xlabel('Green Light Duration (seconds)')
     plt.ylabel('Average Wait Time (seconds)')
     plt.grid(True)
-    plt.savefig('analytics/plots/exp1_wait_time.png')
+    plt.savefig('analytics/plots/plt_exp1_wait_time.png')
     plt.close()
     
     # Plot 1b: Throughput vs. Green Light Time
@@ -28,7 +28,7 @@ def generate_plots(exp1_results, exp2_results):
     plt.xlabel('Green Light Duration (seconds)')
     plt.ylabel('Throughput (vehicles/min)')
     plt.grid(True)
-    plt.savefig('analytics/plots/exp1_throughput.png')
+    plt.savefig('analytics/plots/plt_exp1_throughput.png')
     plt.close()
     
     # --- Experiment 2: Varying Arrival Rate ---
@@ -44,7 +44,7 @@ def generate_plots(exp1_results, exp2_results):
     plt.xlabel('Arrival Rate (vehicles/second)')
     plt.ylabel('Average Wait Time (seconds)')
     plt.grid(True)
-    plt.savefig('analytics/plots/exp2_wait_time.png')
+    plt.savefig('analytics/plots/plt_exp2_wait_time.png')
     plt.close()
     
     # Plot 2b: Throughput vs. Arrival Rate
@@ -54,7 +54,7 @@ def generate_plots(exp1_results, exp2_results):
     plt.xlabel('Arrival Rate (vehicles/second)')
     plt.ylabel('Throughput (vehicles/min)')
     plt.grid(True)
-    plt.savefig('analytics/plots/exp2_throughput.png')
+    plt.savefig('analytics/plots/plt_exp2_throughput.png')
     plt.close()
     
     # Plot 2c: Max Queue Length vs. Arrival Rate
@@ -64,5 +64,5 @@ def generate_plots(exp1_results, exp2_results):
     plt.xlabel('Arrival Rate (vehicles/second)')
     plt.ylabel('Max Queue Length (vehicles)')
     plt.grid(True)
-    plt.savefig('analytics/plots/exp2_queue_length.png')
+    plt.savefig('analytics/plots/plt_exp2_queue_length.png')
     plt.close()

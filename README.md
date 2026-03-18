@@ -22,9 +22,14 @@ A hybrid continuous/discrete 2D simulation of a 4-way traffic intersection built
 - `matplotlib`
 
 ## Usage
-Run the simulation:
+Run the visual simulation:
 ```bash
 python3 main.py
+```
+
+Run headless experiments and generate data plots:
+```bash
+python3 run_experiments.py
 ```
 
 ### Controls
