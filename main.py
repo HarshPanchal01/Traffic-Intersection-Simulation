@@ -451,7 +451,7 @@ def main():
     
     # Start recording automatically
     is_recording = True
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now().strftime("%b%d_%Y_%I%M%p").lower()
     video_filename = f"simulation_{timestamp}.mp4"
     video_writer = imageio.get_writer(video_filename, fps=60.0)
     print(f"Recording started: {video_filename}")
@@ -475,7 +475,7 @@ def main():
                     is_paused = False
                 elif event.key == pygame.K_s:
                     # Capture snapshot
-                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.datetime.now().strftime("%b%d_%Y_%I%M%p").lower()
                     filename = f"snapshot_{timestamp}.png"
                     pygame.image.save(screen, filename)
                     print(f"Snapshot saved: {filename}")
