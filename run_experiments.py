@@ -1,8 +1,5 @@
 import pygame
-import numpy as np
 import math
-import sys
-import os
 
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
@@ -39,11 +36,15 @@ def run_headless_sim(sim_time_limit, spawn_rate, green_time, dt=1.0/60.0):
                 light_state = traffic_lights.ew_state
                 
             for i, vehicle in enumerate(vehicles[direction]):
+                # Find the closest vehicle ahead, including those from other directions that merged.
+                # We calculate the distance purely in 1D along the track (state[0]) because 
+                # 2D Euclidean distance cuts corners on curves, causing false collision readings.
                 min_dist_ahead = float('inf')
                 
                 lane_vehicles_ahead = [c for c in vehicles[direction][:i] if c.lane == vehicle.lane]
                 if lane_vehicles_ahead:
                     vehicle_ahead = lane_vehicles_ahead[-1]
+                    # 1D Distance = Position of car ahead - Position of current car - their half lengths
                     d = vehicle_ahead.state[0] - vehicle.state[0] - (vehicle.length / 2) - (vehicle_ahead.length / 2)
                     if d > 0 and d < min_dist_ahead:
                         min_dist_ahead = d
@@ -131,19 +132,25 @@ def run_headless_sim(sim_time_limit, spawn_rate, green_time, dt=1.0/60.0):
                 vehicle.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red, cross_traffic_blocking)
                 all_vehicles.append(vehicle)
 
+        # Collision detection (using 2D Euclidean distance)
+        # Modeling vehicles approximately as bounding circles. 
+        # If the distance between the centers is less than the threshold, it is a collision.
         for i in range(len(all_vehicles)):
             for j in range(i + 1, len(all_vehicles)):
                 car1 = all_vehicles[i]
                 car2 = all_vehicles[j]
                 pos1 = car1.get_world_pos()
                 pos2 = car2.get_world_pos()
+                
+                # Distance formula: d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
                 dist = math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+                
                 if dist < 30.0:
                     pair_id = tuple(sorted((id(car1), id(car2))))
                     if pair_id not in collided_pairs:
                         collision_count += 1
                         collided_pairs.add(pair_id)
-                        print(f"\nCollision! {car1.direction}-{car1.turn} ({car1.state[0]:.1f}) vs {car2.direction}-{car2.turn} ({car2.state[0]:.1f})", end='')
+                        print(f"\nCollision Detected! {car1.direction}-{car1.turn} ({car1.state[0]:.1f}) vs {car2.direction}-{car2.turn} ({car2.state[0]:.1f})")
 
         metrics.update_max_queue(vehicles)
 
@@ -173,24 +180,24 @@ def main():
     green_times = [5, 10, 15, 20, 30, 40, 60]
     exp1_results = []
     
-    print(f"Running Experiment 1: Varying Green Light Time (rate={fixed_rate} v/s)")
+    print(f"Running Experiment 1: Varying Green Light Time (rate = {fixed_rate} vehicles/second)")
     for g in green_times:
-        print(f"  Simulating Green Time = {g:02d}s... ", end='', flush=True)
+        print(f"Simulating Green Time = {g:02d}s... ", end='', flush=True)
         res = run_headless_sim(sim_time, fixed_rate, g)
         exp1_results.append((g, res))
-        print(f"Done. Avg Wait: {res['avg_wait_time']:5.1f}s, Throughput: {res['throughput']:5.1f} v/m, Collisions: {res['collisions']}")
+        print(f"Done. Avg Wait: {res['avg_wait_time']:5.1f}s, Throughput: {res['throughput']:5.1f} veh/min, Collisions: {res['collisions']}")
         
     # Experiment 2: Vary Arrival Rate (fixed green time)
     fixed_green = 20.0
     arrival_rates = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25]
     exp2_results = []
     
-    print(f"\nRunning Experiment 2: Varying Arrival Rate (green_time={fixed_green}s)")
+    print(f"\nRunning Experiment 2: Varying Arrival Rate (Green Time = {fixed_green} seconds)")
     for r in arrival_rates:
-        print(f"  Simulating Arrival Rate = {r:.2f} v/s... ", end='', flush=True)
+        print(f"Simulating Arrival Rate = {r:.2f} veh/sec... ", end='', flush=True)
         res = run_headless_sim(sim_time, r, fixed_green)
         exp2_results.append((r, res))
-        print(f"Done. Avg Wait: {res['avg_wait_time']:5.1f}s, Throughput: {res['throughput']:5.1f} v/m, Collisions: {res['collisions']}")
+        print(f"Done. Avg Wait: {res['avg_wait_time']:5.1f}s, Throughput: {res['throughput']:5.1f} veh/min, Collisions: {res['collisions']}")
         
     print("\nGenerating Plots...")
     generate_plots(exp1_results, exp2_results)

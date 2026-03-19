@@ -13,9 +13,16 @@ class TrafficLightSystem:
         self.current_all_red_time = 0.0
 
     def _get_random_all_red_time(self):
+        """
+        Returns a random all-red clearance phase time between 1.0 and 3.0 seconds.
+        This provides a realistic buffer between crossing light changes to prevent T-bone collisions.
+        """
         return np.random.uniform(1.0, 3.0)
 
     def update(self, dt):
+        """
+        Updates the state machine based on the elapsed time (dt).
+        """
         self.timer += dt
         
         if self.state == "NS_GREEN" and self.timer >= self.ns_green:
@@ -41,12 +48,14 @@ class TrafficLightSystem:
 
     @property
     def ns_state(self):
+        """ Returns the simple GREEN/YELLOW/RED state for the North/South direction. """
         if self.state == "NS_GREEN": return "GREEN"
         if self.state == "NS_YELLOW": return "YELLOW"
         return "RED" # Applies for ALL_RED_NS, EW_GREEN, EW_YELLOW, ALL_RED_EW
 
     @property
     def ew_state(self):
+        """ Returns the simple GREEN/YELLOW/RED state for the East/West direction. """
         if self.state == "EW_GREEN": return "GREEN"
         if self.state == "EW_YELLOW": return "YELLOW"
         return "RED" # Applies for ALL_RED_EW, NS_GREEN, NS_YELLOW, ALL_RED_NS

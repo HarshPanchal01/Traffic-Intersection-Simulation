@@ -4,11 +4,20 @@ import pygame
 import math
 
 class Trajectory:
+    """
+    Defines the mathematical path a vehicle follows through the intersection.
+    The path is represented parametrically as a function of distance traveled (dist).
+    It consists of a straight segment, an optional circular arc for turning, and 
+    another straight segment exiting the intersection.
+    """
     def __init__(self, direction, turn):
         self.direction = direction
         self.turn = turn
 
-        # start_pos is the center line separating the two lanes
+        # start_pos is the center line separating the two lanes.
+        # Angles are in degrees, starting from standard Pygame/Math orientation.
+        # dir_vec is the unit vector pointing in the direction of initial travel.
+        # right_vec is the orthogonal unit vector pointing to the right of dir_vec.
         if direction == 'N':
             self.start_pos = (350, 0)
             self.start_angle = 180
@@ -30,14 +39,19 @@ class Trajectory:
             self.dir_vec = (1, 0)
             self.right_vec = (0, 1)
 
+        # Distance from spawn to the start of the intersection box.
         self.straight_dist = 300.0
         self.arc_len = 0.0
 
+        # Calculate the center of rotation (arc_center) and arc length for turns.
+        # R is the turning radius. 
         if turn == 'right':
             self.R = 50.0
             self.arc_len = self.R * math.pi / 2
+            # The start of the arc is at the end of the straight line segment
             arc_start_pos = (self.start_pos[0] + self.dir_vec[0] * self.straight_dist,
                              self.start_pos[1] + self.dir_vec[1] * self.straight_dist)
+            # The center of the turning circle is R distance to the right of the arc start
             self.arc_center = (arc_start_pos[0] + self.right_vec[0] * self.R,
                                arc_start_pos[1] + self.right_vec[1] * self.R)
         elif turn == 'left':
@@ -45,38 +59,61 @@ class Trajectory:
             self.arc_len = self.R * math.pi / 2
             arc_start_pos = (self.start_pos[0] + self.dir_vec[0] * self.straight_dist,
                              self.start_pos[1] + self.dir_vec[1] * self.straight_dist)
+            # The center of the turning circle is R distance to the left (negative right_vec)
             self.arc_center = (arc_start_pos[0] - self.right_vec[0] * self.R,
                                arc_start_pos[1] - self.right_vec[1] * self.R)
 
     def get_position_and_angle(self, dist):
+        """
+        Calculates the 2D world coordinates and orientation of the vehicle given its 
+        1D distance traveled along the path.
+        
+        Returns:
+            x (float): World X coordinate
+            y (float): World Y coordinate
+            angle (float): Orientation in degrees
+            rx (float): Right-pointing unit vector X (used for lane offset)
+            ry (float): Right-pointing unit vector Y
+        """
+        # Phase 1: Approaching the intersection (Straight line)
         if dist <= self.straight_dist or self.turn == 'straight':
             x = self.start_pos[0] + self.dir_vec[0] * dist
             y = self.start_pos[1] + self.dir_vec[1] * dist
             return x, y, self.start_angle, self.right_vec[0], self.right_vec[1]
 
+        # Phase 2: Inside the intersection (Curved arc)
         if dist <= self.straight_dist + self.arc_len:
             arc_dist = dist - self.straight_dist
-            theta = arc_dist / self.R
+            theta = arc_dist / self.R # Angle swept along the arc in radians
             cx, cy = self.arc_center
 
             if self.turn == 'right':
+                # Vector from arc center to the start of the arc
                 vx, vy = -self.right_vec[0] * self.R, -self.right_vec[1] * self.R
+                # Apply 2D rotation matrix to find current position on arc
                 cos_t, sin_t = math.cos(theta), math.sin(theta)
                 nx = vx * cos_t - vy * sin_t
                 ny = vx * sin_t + vy * cos_t
+                
                 ang = self.start_angle - math.degrees(theta)
+                # Calculate new right-pointing vector (normal to tangent)
                 rx, ry = -nx / self.R, -ny / self.R
                 return cx + nx, cy + ny, ang, rx, ry
 
             elif self.turn == 'left':
+                # Vector from arc center to the start of the arc
                 vx, vy = self.right_vec[0] * self.R, self.right_vec[1] * self.R
+                # Apply 2D rotation matrix (negative theta because turning left)
                 cos_t, sin_t = math.cos(-theta), math.sin(-theta)
                 nx = vx * cos_t - vy * sin_t
                 ny = vx * sin_t + vy * cos_t
+                
                 ang = self.start_angle + math.degrees(theta)
+                # Calculate new right-pointing vector (normal to tangent)
                 rx, ry = nx / self.R, ny / self.R
                 return cx + nx, cy + ny, ang, rx, ry
 
+        # Phase 3: Exiting the intersection (Straight line)
         straight_2_dist = dist - self.straight_dist - self.arc_len
 
         if self.turn == 'right':
@@ -169,6 +206,9 @@ class Vehicle:
 
         self.t = 0.0
 
+        # Initialize the ODE solver for continuous kinematics
+        # State: [position (x), velocity (v)]
+        # We use dop853 (Runge-Kutta 8th order) for high-accuracy continuous integration
         self.solver = ode(self.f)
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
@@ -206,6 +246,21 @@ class Vehicle:
         return img
 
     def f(self, t, state, a):
+        """
+        The system of first-order ordinary differential equations (ODEs).
+        
+        We have:
+            dx/dt = v (velocity)
+            dv/dt = a (acceleration)
+            
+        Args:
+            t (float): Current simulation time
+            state (list): [position, velocity]
+            a (float): Current acceleration command applied by the driver
+            
+        Returns:
+            list: [dx/dt, dv/dt]
+        """
         x, v = state
         return [v, a]
 
@@ -217,6 +272,10 @@ class Vehicle:
             self.has_stopped_for_red = False
         
         a = 0.0
+        
+        # Calculate minimum safe braking distance based on current velocity.
+        # From equations of motion: v^2 = u^2 + 2as. Setting v_final = 0:
+        # s = (v_initial^2) / (2 * a_braking)
         braking_dist = (v**2) / (2 * self.braking) if v > 0 else 0.0
         
         stopping_for_light = False
@@ -314,11 +373,16 @@ class Vehicle:
             a = 0.0
             self.state[1] = 0.0
 
+        # Feed the acceleration command to the ODE solver
         self.solver.set_f_params(a)
+        
+        # Perform explicit Runge-Kutta 4 (RK4) integration step
         if self.solver.successful():
             self.solver.integrate(self.t + dt)
             self.t += dt
             self.state = self.solver.y
+            
+            # Prevent moving backwards
             if self.state[1] < 0:
                 self.state[1] = 0.0
 
