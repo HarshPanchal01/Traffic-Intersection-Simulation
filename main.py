@@ -4,6 +4,7 @@ import datetime
 import imageio
 import numpy as np
 import os
+import argparse
 from simulation.vehicle import Vehicle
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
@@ -666,4 +667,12 @@ def main():
     sys.exit(0)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Traffic Intersection Simulation')
+    parser.add_argument('--headless', action='store_true', help='Run headless experiments without GUI')
+    args = parser.parse_args()
+
+    if args.headless:
+        import run_experiments
+        run_experiments.main()
+    else:
+        main()

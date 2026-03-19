@@ -29,7 +29,7 @@ python3 main.py
 
 Run headless experiments and generate data plots:
 ```bash
-python3 run_experiments.py
+python3 main.py --headless
 ```
 
 ### Controls

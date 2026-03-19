@@ -4,10 +4,6 @@ import math
 import sys
 import os
 
-# Setup hidden pygame window for sprites to load
-pygame.init()
-pygame.display.set_mode((1, 1), pygame.HIDDEN)
-
 from simulation.traffic_light import TrafficLightSystem
 from simulation.spawner import Spawner
 from simulation.vehicle import Vehicle
@@ -166,6 +162,10 @@ def run_headless_sim(sim_time_limit, spawn_rate, green_time, dt=1.0/60.0):
     }
 
 def main():
+    # Setup hidden pygame window for sprites to load
+    pygame.init()
+    pygame.display.set_mode((1, 1), pygame.HIDDEN)
+    
     sim_time = 300 # 5 minutes per run
     
     # Experiment 1: Vary Green Light Time (fixed arrival rate)
