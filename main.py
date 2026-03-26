@@ -526,13 +526,19 @@ def main():
                                 pos2 = ov.get_world_pos()
                                 dx = pos2[0] - pos1[0]
                                 dy = pos2[1] - pos1[1]
-                                forward_dist = dx * dx_dir + dy * dy_dir
-                                if forward_dist > 0:
-                                    lateral_dist = abs(dx * rx + dy * ry)
-                                    if lateral_dist < 15.0:
-                                        d = forward_dist - (vehicle.length / 2) - (ov.length / 2)
-                                        if d > 0 and d < min_dist_ahead:
-                                            min_dist_ahead = d
+                                
+                                _, _, _, ov_rx, ov_ry = ov.trajectory.get_position_and_angle(ov.state[0])
+                                ov_dx_dir, ov_dy_dir = ov_ry, -ov_rx
+                                
+                                # Only follow cars heading in roughly the same direction (dot product > 0.5)
+                                if (dx_dir * ov_dx_dir + dy_dir * ov_dy_dir) > 0.5:
+                                    forward_dist = dx * dx_dir + dy * dy_dir
+                                    if forward_dist > 0:
+                                        lateral_dist = abs(dx * rx + dy * ry)
+                                        if lateral_dist < 15.0:
+                                            d = forward_dist - (vehicle.length / 2) - (ov.length / 2)
+                                            if d > 0 and d < min_dist_ahead:
+                                                min_dist_ahead = d
                                             
                     dist_ahead = min_dist_ahead if min_dist_ahead != float('inf') else None
                         

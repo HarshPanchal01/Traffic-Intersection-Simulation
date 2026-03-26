@@ -55,6 +55,7 @@ class Trajectory:
             self.arc_center = (arc_start_pos[0] + self.right_vec[0] * self.R,
                                arc_start_pos[1] + self.right_vec[1] * self.R)
         elif turn == 'left':
+            self.straight_dist = 300.0
             self.R = 150.0
             self.arc_len = self.R * math.pi / 2
             arc_start_pos = (self.start_pos[0] + self.dir_vec[0] * self.straight_dist,
@@ -345,20 +346,20 @@ class Vehicle:
 
                 clearing_intersection = False
                 # If past or very close to the stop line and light is YELLOW/RED, speed up to clear
-                if light_state in ['YELLOW', 'RED'] and self.state[0] > self.trajectory.straight_dist - 45:
+                if light_state in ['YELLOW', 'RED'] and self.state[0] > 255.0:
                     clearing_intersection = True
 
                 # Reduce speed for turns
                 if self.turn != 'straight' and self.state[0] > self.trajectory.straight_dist - 50 and self.state[0] < self.trajectory.straight_dist + self.trajectory.arc_len:
                     if clearing_intersection:
-                        target_speed = self.max_speed * 1.5 # Go faster than normal to clear intersection
+                        target_speed = max(self.max_speed * 1.5, 30.0) # Go faster than normal to clear intersection
                     else:
                         if self.turn == 'right':
-                            target_speed = self.max_speed * 0.85
+                            target_speed = max(self.max_speed * 0.7, 20.0)
                         else:
-                            target_speed = self.max_speed * 0.6
+                            target_speed = max(self.max_speed * 0.9, 24.0)
                 elif clearing_intersection:
-                    target_speed = self.max_speed * 2.0
+                    target_speed = max(self.max_speed * 2.0, 25.0)
 
                 if v < target_speed:
                     if clearing_intersection:
