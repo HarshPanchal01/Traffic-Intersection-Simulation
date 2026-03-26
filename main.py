@@ -210,23 +210,25 @@ def draw_intersection(screen, t=0.0):
         x1, y1 = start_pos
         x2, y2 = end_pos
         if x1 == x2:
-            ycoords = [y for y in range(min(y1, y2), max(y1, y2), dash_length)]
+            step = dash_length if y1 < y2 else -dash_length
+            ycoords = list(range(y1, y2, step))
             for i in range(0, len(ycoords) - 1, 2):
                 pygame.draw.line(surface, color, (x1, ycoords[i]), (x1, ycoords[i+1]), width)
         elif y1 == y2:
-            xcoords = [x for x in range(min(x1, x2), max(x1, x2), dash_length)]
+            step = dash_length if x1 < x2 else -dash_length
+            xcoords = list(range(x1, x2, step))
             for i in range(0, len(xcoords) - 1, 2):
                 pygame.draw.line(surface, color, (xcoords[i], y1), (xcoords[i+1], y1), width)
 
     draw_dashed_line(screen, WHITE, (center_x - 50, 0), (center_x - 50, center_y - (ROAD_WIDTH // 2 + 30)), 2)
     draw_dashed_line(screen, WHITE, (center_x + 50, 0), (center_x + 50, center_y - (ROAD_WIDTH // 2 + 30)), 2)
-    draw_dashed_line(screen, WHITE, (center_x - 50, center_y + (ROAD_WIDTH // 2 + 30)), (center_x - 50, HEIGHT), 2)
-    draw_dashed_line(screen, WHITE, (center_x + 50, center_y + (ROAD_WIDTH // 2 + 30)), (center_x + 50, HEIGHT), 2)
+    draw_dashed_line(screen, WHITE, (center_x - 50, HEIGHT), (center_x - 50, center_y + (ROAD_WIDTH // 2 + 30)), 2)
+    draw_dashed_line(screen, WHITE, (center_x + 50, HEIGHT), (center_x + 50, center_y + (ROAD_WIDTH // 2 + 30)), 2)
     
     draw_dashed_line(screen, WHITE, (0, center_y - 50), (center_x - (ROAD_WIDTH // 2 + 30), center_y - 50), 2)
     draw_dashed_line(screen, WHITE, (0, center_y + 50), (center_x - (ROAD_WIDTH // 2 + 30), center_y + 50), 2)
-    draw_dashed_line(screen, WHITE, (center_x + (ROAD_WIDTH // 2 + 30), center_y - 50), (WIDTH, center_y - 50), 2)
-    draw_dashed_line(screen, WHITE, (center_x + (ROAD_WIDTH // 2 + 30), center_y + 50), (WIDTH, center_y + 50), 2)
+    draw_dashed_line(screen, WHITE, (WIDTH, center_y - 50), (center_x + (ROAD_WIDTH // 2 + 30), center_y - 50), 2)
+    draw_dashed_line(screen, WHITE, (WIDTH, center_y + 50), (center_x + (ROAD_WIDTH // 2 + 30), center_y + 50), 2)
     
     # Draw left turn arrows in the left lanes
     def draw_left_arrow(surface, pos, angle):
