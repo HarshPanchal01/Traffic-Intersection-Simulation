@@ -54,7 +54,6 @@ class Spawner:
             direction = np.random.choice(['N', 'S', 'E', 'W'])
             
             # Weighted probabilities for turning behavior
-            # Most vehicles go straight (60%), some turn left (20%) or right (20%)
             turn = np.random.choice(['straight', 'left', 'right'], p=[0.6, 0.2, 0.2])
             
             # Assign lane based on turn intention
@@ -65,7 +64,7 @@ class Spawner:
             
             spawned.append((direction, turn, lane, vehicle_type))
             
-            # Calculate time for the *next* vehicle arrival
+            # Calculate time for the next vehicle arrival
             self.time_to_next = self._get_next_time()
             
         return spawned

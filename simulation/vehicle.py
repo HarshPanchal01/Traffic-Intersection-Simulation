@@ -15,7 +15,6 @@ class Trajectory:
         self.turn = turn
 
         # start_pos is the center line separating the two lanes.
-        # Angles are in degrees, starting from standard Pygame/Math orientation.
         # dir_vec is the unit vector pointing in the direction of initial travel.
         # right_vec is the orthogonal unit vector pointing to the right of dir_vec.
         if direction == 'N':
@@ -44,7 +43,6 @@ class Trajectory:
         self.arc_len = 0.0
 
         # Calculate the center of rotation (arc_center) and arc length for turns.
-        # R is the turning radius. 
         if turn == 'right':
             self.R = 50.0
             self.arc_len = self.R * math.pi / 2
@@ -208,8 +206,6 @@ class Vehicle:
         self.t = 0.0
 
         # Initialize the ODE solver for continuous kinematics
-        # State: [position (x), velocity (v)]
-        # We use dop853 (Runge-Kutta 8th order) for high-accuracy continuous integration
         self.solver = ode(self.f)
         self.solver.set_integrator('dop853')
         self.solver.set_initial_value(self.state, self.t)
@@ -275,8 +271,6 @@ class Vehicle:
         a = 0.0
         
         # Calculate minimum safe braking distance based on current velocity.
-        # From equations of motion: v^2 = u^2 + 2as. Setting v_final = 0:
-        # s = (v_initial^2) / (2 * a_braking)
         braking_dist = (v**2) / (2 * self.braking) if v > 0 else 0.0
         
         stopping_for_light = False

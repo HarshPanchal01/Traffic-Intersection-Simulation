@@ -6,7 +6,6 @@ def generate_plots(exp1_results, exp2_results):
     Parses the results from the experimentation runs and generates data visualization 
     charts using matplotlib.
     """
-    # Ensure directory exists for saving plots
     os.makedirs('analytics/plots', exist_ok=True)
     
     # --- Experiment 1: Varying Green Light Time ---

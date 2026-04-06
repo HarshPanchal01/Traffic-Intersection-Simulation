@@ -32,9 +32,6 @@ BUILDING_COLORS = [
 ]
 
 BUILDINGS = [
-    # Top-Left (UI area) - No buildings here, just grass
-    # Top-Right (UI area) - No buildings here, just grass
-    
     # Bottom-Left
     (30, 530, 150, 110, BUILDING_COLORS[2], 'ac_units'),
     (200, 530, 70, 240, BUILDING_COLORS[3], 'helipad'),
@@ -47,7 +44,7 @@ BUILDINGS = [
 ]
 
 TREES = [
-    # Top-Left Park (shifted up to avoid sidewalk at bottom edge)
+    # Top-Left Park
     (30, 80), (210, 50), (100, 40), (260, 100), (50, 210),
     (250, 180), (70, 250), (160, 260), (220, 240), (30, 140),
     # Top-Right Park
@@ -505,8 +502,6 @@ def main():
                     
                 for i, vehicle in enumerate(vehicles[direction]):
                     # Find the closest vehicle ahead, including those from other directions that merged.
-                    # We calculate the distance purely in 1D along the track (state[0]) because 
-                    # 2D Euclidean distance cuts corners on curves, causing false collision readings.
                     min_dist_ahead = float('inf')
                     
                     lane_vehicles_ahead = [c for c in vehicles[direction][:i] if c.lane == vehicle.lane]
@@ -613,9 +608,7 @@ def main():
                     vehicle.update(dt, light_state, dist_ahead, must_yield_left, can_right_on_red, cross_traffic_blocking)
                     all_vehicles.append(vehicle)
 
-            # Collision detection (using 2D Euclidean distance)
-            # Modeling vehicles approximately as bounding circles. 
-            # If the distance between the centers is less than the threshold, it is a collision.
+            # Collision detection
             for i in range(len(all_vehicles)):
                 for j in range(i + 1, len(all_vehicles)):
                     car1 = all_vehicles[i]
