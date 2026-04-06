@@ -43,4 +43,3 @@ python3 main.py --headless
 - `simulation/`: Core logic including kinematics, traffic lights, and spawner.
 - `analytics/`: Metrics management and data collection.
 - `assets/`: Image sprites for vehicles and traffic lights.
-- `report/`: LaTeX source for the final project documentation.
